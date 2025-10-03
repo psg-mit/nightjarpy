@@ -1,0 +1,85 @@
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "nightjarpy"
+version = "0.1.0"
+description = "Python library for embedding natural language code with shared program state in Python programs"
+authors = [
+    { name = "Ellie Cheng", email = "ellieyhc@csail.mit.edu" },
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+keywords = [
+    "natural language programming",
+    "llm",
+    "interoperability",
+]
+dependencies = [
+    "openai>=2.8.1",
+    "anthropic>=0.74.0",
+    "python-dotenv>=1.0.1",
+    "typed-argument-parser>=1.10.0",
+    "typeguard>=3.0.0",
+    "pydantic>=2.12.5",
+    "shortuuid>=1.0.1",
+    "func-timeout>=4.3.0",
+    "dspy>=3.0.0",
+    "numpy>=2.2.2",
+    "orjson>=3.11.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/psg-mit/nightjarpy"
+Issues = "https://github.com/psg-mit/nightjarpy/issues"
+
+[tool.poetry]
+packages = [
+    { include = "nightjarpy", from = "src" },
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-cov = "^3.0"
+
+[project.optional-dependencies]
+research = [
+    "wandb>=0.18.0",
+    "tqdm>=4.62.3",
+    "pandas>=2.2.3",
+    "seaborn>=0.13.2",
+    "tabulate>=0.9.0",
+    "datasets>=4.4.1",
+]
+vllm = [
+    "vllm",
+]
+viz = [
+    "streamlit>=1.28.0",
+    "plotly>=5.15.0",
+    "pandas>=2.2.3",
+]
+all = ["nightjarpy[dev,research,viz,vllm]"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"

@@ -1,0 +1,210 @@
+{
+    "python_features": [
+        "calendar_tool",
+        "get_enemy",
+        "enemy",
+        "pos_tagging",
+        "stores",
+        "stream_generator"
+    ],
+    "tests":{
+        "average_of_three": [
+            "test_0",
+            "test_1",
+            "test_2"
+        ],
+        "balance_parentheses": [
+            "test_0",
+            "test_1"
+        ],
+        "battle": [
+            "test_0",
+            "test_1",
+            "test_2"
+        ],
+        "tiny_bookshop": [
+            "test_0",
+            "test_1",
+            "test_2"
+        ],
+        "gsm8k": [
+            "test_0,",
+            "test_1",
+            "test_2"
+        ],
+        "calendar_tool": [
+            "test_1",
+            "test_2",
+            "test_3"
+        ],
+        "character_builder": [
+            "test_name",
+            "test_trait_diplomatic",
+            "test_trait_adventurous",
+            "test_trait_brave"
+        ],
+        "coffeeshop": [
+            "test_0_line_item_0_product_type_matches",
+            "test_0_line_item_0_product_name_matches",
+            "test_0_line_item_0_product_size_matches",
+            "test_0_line_item_0_product_temperature_matches",
+            "test_0_line_item_0_quantity_matches",
+            "test_1_line_item_0_product_type_matches",
+            "test_1_line_item_0_product_name_matches",
+            "test_1_line_item_0_product_size_matches",
+            "test_1_line_item_0_product_temperature_matches",
+            "test_1_line_item_0_product_option_0_type_matches",
+            "test_1_line_item_0_product_option_0_name_matches",
+            "test_1_line_item_0_product_option_1_type_matches",
+            "test_1_line_item_0_product_option_1_name_matches",
+            "test_1_line_item_0_quantity_matches",
+            "test_1_line_item_1_product_type_matches",
+            "test_1_line_item_1_product_name_matches",
+            "test_1_line_item_1_product_size_matches",
+            "test_1_line_item_1_product_temperature_matches",
+            "test_1_line_item_1_quantity_matches",
+            "test_1_line_item_2_product_type_matches",
+            "test_1_line_item_2_product_name_matches",
+            "test_1_line_item_2_product_option_0_type_matches",
+            "test_1_line_item_2_product_option_0_name_matches",
+            "test_1_line_item_2_product_option_1_type_matches",
+            "test_1_line_item_2_product_option_1_name_matches",
+            "test_1_line_item_2_quantity_matches",
+            "test_2",
+            "test_3"
+        ],
+        "email_classification": [
+            "test_0_correct_type",
+            "test_0_correct_result",
+            "test_1_correct_type",
+            "test_1_correct_result",
+            "test_2_correct_type",
+            "test_2_correct_result",
+            "test_3_correct_type",
+            "test_3_correct_result"
+        ],
+        "enemy": [
+            "enemy_not_none",
+            "enemy_name_str",
+            "enemy_description_str",
+            "enemy_health_int",
+            "enemy_attack_power_int",
+            "enemy_speak_method",
+            "player1_attack_method",
+            "enemy_before_health_gt_enemy_after_health",
+            "speak_output_not_none"
+        ],
+        "fact_checking": [
+            "test_0_fact_0",
+            "test_0_fact_1",
+            "test_0_fact_2",
+            "test_1_fact_0",
+            "test_1_fact_1",
+            "test_2"
+        ],
+        "feed_filtering": [
+            "test_technical_output_type",
+            "test_technical_output_content_1",
+            "test_technical_output_content_2",
+            "test_technical_output_content_3",
+            "test_technical_output_content_4",
+            "test_technical_output_content_5",
+            "test_spicy_output_type",
+            "test_spicy_output_content_1",
+            "test_spicy_output_content_2",
+            "test_spicy_output_content_3",
+            "test_spicy_output_content_4",
+            "test_spicy_output_content_5"
+        ],
+        "filter_numbers": [
+            "test_0",
+            "test_1",
+            "test_2"
+        ],
+        "get_enemy": [
+            "enemy_not_predefined",
+            "enemy_exists",
+            "enemy_has_name",
+            "enemy_name_is_str",
+            "enemy_has_description",
+            "enemy_description_is_str"
+        ],
+        "graph": [
+            "test_0",
+            "test_1",
+            "test_2",
+            "test_3",
+            "test_4",
+            "test_5"
+        ],
+        "health_data": [
+            "health_data_type",
+            "health_data_condition",
+            "health_data_condition_name",
+            "health_data_condition_start_date",
+            "health_data_condition_status",
+            "health_data_condition_end_date"
+        ],
+        "mask_sensitive_information": [
+            "test_0",
+            "test_1"
+        ],
+        "menu": [
+            "test_sushi",
+            "test_ramen",
+            "test_sashimi",
+            "test_salad"
+        ],
+        "pos_tagging": [
+            "test_0",
+            "test_1",
+            "test_2",
+            "test_3",
+            "test_4",
+            "test_5",
+            "test_6",
+            "test_7",
+            "test_8"
+        ],
+        "proposer_verifier": [
+            "proposal_is_string",
+            "proposal_is_non_empty"
+        ],
+        "sentiment": [
+            "sentiment_is_string_1",
+            "sentiment_is_positive",
+            "sentiment_is_string_2",
+            "sentiment_is_negative"
+        ],
+        "stores": [
+            "stores_type",
+            "stores_count",
+            "stores_instance_type_1",
+            "stores_instance_type_2",
+            "stores_instance_name_1",
+            "stores_instance_city_1",
+            "stores_instance_name_2",
+            "stores_instance_city_2",
+            "stores_instance_inventory_1",
+            "stores_instance_inventory_2"
+        ],
+        "stream_generator": [
+            "uspres_1",
+            "uspres_2",
+            "uspres_3",
+            "p_and_p_1",
+            "p_and_p_2",
+            "p_and_p_3"
+        ],
+        "task_completion": [
+            "test_0_completion_0",
+            "test_0_completion_1",
+            "test_0_completion_2"
+        ],
+        "wordle_solver": [
+            "test_0",
+            "test_1",
+            "test_2"
+        ]
+    }
+}

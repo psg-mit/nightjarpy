@@ -1,0 +1,5 @@
+import re
+
+LANGUAGE_IDENTIFIER = "natural"
+TRUNCATE_START = "#### TRUNCATE START ####"
+TRUNCATE_END = "#### TRUNCATE END ####"

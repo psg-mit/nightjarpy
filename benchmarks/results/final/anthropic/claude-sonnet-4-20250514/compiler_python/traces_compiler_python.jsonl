@@ -1,0 +1,13 @@
+{"file_name": "balance_parentheses", "model": "anthropic/claude-sonnet-4-20250514", "run": 0, "trace": []}
+{"file_name": "fact_checking", "model": "anthropic/claude-sonnet-4-20250514", "run": 0, "trace": []}
+{"file_name": "balance_parentheses", "model": "anthropic/claude-sonnet-4-20250514", "run": 1, "trace": []}
+{"file_name": "fact_checking", "model": "anthropic/claude-sonnet-4-20250514", "run": 1, "trace": []}
+{"file_name": "balance_parentheses", "model": "anthropic/claude-sonnet-4-20250514", "run": 2, "trace": []}
+{"file_name": "fact_checking", "model": "anthropic/claude-sonnet-4-20250514", "run": 2, "trace": []}
+{"file_name": "balance_parentheses", "model": "anthropic/claude-sonnet-4-20250514", "run": 3, "trace": []}
+{"file_name": "fact_checking", "model": "anthropic/claude-sonnet-4-20250514", "run": 3, "trace": []}
+{"file_name": "balance_parentheses", "model": "anthropic/claude-sonnet-4-20250514", "run": 4, "trace": []}
+{"file_name": "fact_checking", "model": "anthropic/claude-sonnet-4-20250514", "run": 4, "trace": []}
+{"file_name": "stream_generator", "model": "anthropic/claude-sonnet-4-20250514", "run": 0, "trace": []}
+{"file_name": "stream_generator", "model": "anthropic/claude-sonnet-4-20250514", "run": 2, "trace": []}
+{"file_name": "wordle_solver", "model": "anthropic/claude-sonnet-4-20250514", "run": 4, "trace": []}

@@ -1,0 +1,125 @@
+{"file_name": "average_of_three", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "balance_parentheses", "run": 0, "pass_rate": 50.0, "failure_reason": "reasoning", "errors": []}
+{"file_name": "battle", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "character_builder", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "coffeeshop", "run": 0, "pass_rate": 42.857142857142854, "failure_reason": "reasoning", "errors": [{"error_tool_call_id": "toolu_01MmSCFq2CPBMYaRcPH7Y7Hw", "error_tool_call": {"id": "toolu_01MmSCFq2CPBMYaRcPH7Y7Hw", "function": {"name": "raise", "arguments": "{\"variable\": \"@699\"}"}, "type": "function"}, "error_content": "Error: Undefined variable `@699`", "category": "forbidden_var", "recovery_method": "correction"}]}
+{"file_name": "email_classification", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "enemy", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "feed_filtering", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "get_enemy", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "graph", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "gsm8k", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "health_data", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "mask_sensitive_information", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "menu", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "proposer_verifier", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "sentiment", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "stream_generator", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "tiny_bookshop", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "wordle_solver", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01KaNXzC3B2GHTtKNbQKreLP", "error_tool_call": {"id": "toolu_01KaNXzC3B2GHTtKNbQKreLP", "function": {"name": "eval", "arguments": "{\"expression\": \"SPACE\"}"}, "type": "function"}, "error_content": "Error: Nightjar code raised an error, name 'SPACE' is not defined", "category": "state_op_error", "recovery_method": "correction"}, {"error_tool_call_id": "toolu_015qc2tqxuUn9MVPq4AxiQEb", "error_tool_call": {"id": "toolu_015qc2tqxuUn9MVPq4AxiQEb", "function": {"name": "eval", "arguments": "{\"expression\": \"WORLD\"}"}, "type": "function"}, "error_content": "Error: Nightjar code raised an error, name 'WORLD' is not defined", "category": "forbidden_var", "recovery_method": "correction"}]}
+{"file_name": "average_of_three", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "balance_parentheses", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "battle", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "character_builder", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "email_classification", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_019NNk25z2zuXi5e6cN2MtH4", "error_tool_call": {"id": "toolu_019NNk25z2zuXi5e6cN2MtH4", "function": {"name": "eval", "arguments": "{\"expression\": \"str(@75)\"}"}, "type": "function"}, "error_content": "Error: Nightjar code raised an error, invalid syntax (<string>, line 1)", "category": "forbidden_var", "recovery_method": "correction"}]}
+{"file_name": "enemy", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "get_enemy", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "gsm8k", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "health_data", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "mask_sensitive_information", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "proposer_verifier", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "sentiment", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "task_completion", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01FvEdTB1AwSKNikZJRTbXeX", "error_tool_call": {"id": "toolu_01FvEdTB1AwSKNikZJRTbXeX", "function": {"name": "eval", "arguments": "{\"expression\": \"str([getattr(task, 'name') for task in tasks])\"}"}, "type": "function"}, "error_content": "Error: Nightjar code raised an error, 'Task' object has no attribute 'name'", "category": "type_error", "recovery_method": "correction"}]}
+{"file_name": "wordle_solver", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_013gXXGAnDEN8AeK5rzLr5DL", "error_tool_call": {"id": "toolu_013gXXGAnDEN8AeK5rzLr5DL", "function": {"name": "eval", "arguments": "{\"expression\": \"SPACE\"}"}, "type": "function"}, "error_content": "Error: Nightjar code raised an error, name 'SPACE' is not defined", "category": "state_op_error", "recovery_method": "correction"}]}
+{"file_name": "average_of_three", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "battle", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "character_builder", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01CCCcbDAehaEzv54j5HWM6Y", "error_tool_call": {"id": "toolu_01CCCcbDAehaEzv54j5HWM6Y", "function": {"name": "exec", "arguments": "{\"code\": \"character = Character()\\ncharacter.name = \\\"Aixin-Jueluo Xuanye\\\"\\ncharacter.traits = [\\\"Diplomatic\\\", \\\"Brave\\\", \\\"Adventurous\\\"]\"}"}, "type": "function"}, "error_content": "Error: Code raised an error, Character.__init__() missing 2 required positional arguments: 'name' and 'traits'", "category": "func_call_error", "recovery_method": "correction"}]}
+{"file_name": "email_classification", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "enemy", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "get_enemy", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "gsm8k", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "health_data", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "mask_sensitive_information", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "menu", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "proposer_verifier", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "sentiment", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "task_completion", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_017dxsLc5hu8bdJzpkcGsXRr", "error_tool_call": {"id": "toolu_017dxsLc5hu8bdJzpkcGsXRr", "function": {"name": "exec", "arguments": "{\"code\": \"for task in tasks:\\n    task_id, description, completed = task\\n    if 'clean' in description.lower() or 'house' in description.lower() or 'dinner' in description.lower():\\n        task[2] = True\"}"}, "type": "function"}, "error_content": "Error: Code raised an error, cannot unpack non-iterable Task object", "category": "type_error", "recovery_method": "correction"}]}
+{"file_name": "tiny_bookshop", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "average_of_three", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "battle", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "character_builder", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "email_classification", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01ARbHX8Wp93Xh1NsCu1Pfrh", "error_tool_call": {"id": "toolu_01ARbHX8Wp93Xh1NsCu1Pfrh", "function": {"name": "raise", "arguments": "{\"variable\": \"@245\"}"}, "type": "function"}, "error_content": "Error: Undefined variable `@245`", "category": "forbidden_var", "recovery_method": "correction"}]}
+{"file_name": "enemy", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "get_enemy", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "gsm8k", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "health_data", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "mask_sensitive_information", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "menu", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "proposer_verifier", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "sentiment", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "task_completion", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_015kstL7SrYMY9FjGq4AQzuv", "error_tool_call": {"id": "toolu_015kstL7SrYMY9FjGq4AQzuv", "function": {"name": "exec", "arguments": "{\"code\": \"for task in tasks:\\n    task_str = str(task)\\n    if 'Clean the house' in task_str or 'Prepare dinner' in task_str:\\n        task[2] = True\"}"}, "type": "function"}, "error_content": "Error: Code raised an error, 'Task' object does not support item assignment", "category": "type_error", "recovery_method": "correction"}]}
+{"file_name": "tiny_bookshop", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "wordle_solver", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01AvtWFhZvgU4Y8YgMmpEPfs", "error_tool_call": {"id": "toolu_01AvtWFhZvgU4Y8YgMmpEPfs", "function": {"name": "eval", "arguments": "{\"expression\": \"SPACE\"}"}, "type": "function"}, "error_content": "Error: Nightjar code raised an error, name 'SPACE' is not defined", "category": "state_op_error", "recovery_method": "correction"}]}
+{"file_name": "average_of_three", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "battle", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "character_builder", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "email_classification", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "enemy", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "feed_filtering", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "get_enemy", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "gsm8k", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "health_data", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "mask_sensitive_information", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "menu", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "proposer_verifier", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "sentiment", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "task_completion", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_0153vgdknGx1xAq4hG3Dgjxd", "error_tool_call": {"id": "toolu_0153vgdknGx1xAq4hG3Dgjxd", "function": {"name": "exec", "arguments": "{\"code\": \"for task in tasks:\\n    if 'house' in task[1].lower() or 'clean' in task[1].lower() or 'dinner' in task[1].lower():\\n        task[2] = True\"}"}, "type": "function"}, "error_content": "Error: Code raised an error, 'Task' object is not subscriptable", "category": "type_error", "recovery_method": "correction"}]}
+{"file_name": "wordle_solver", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01DpCGmU66GUCYZyw7LGCcES", "error_tool_call": {"id": "toolu_01DpCGmU66GUCYZyw7LGCcES", "function": {"name": "eval", "arguments": "{\"expression\": \"SPACE\"}"}, "type": "function"}, "error_content": "Error: Nightjar code raised an error, name 'SPACE' is not defined", "category": "state_op_error", "recovery_method": "correction"}]}
+{"file_name": "fact_checking", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "filter_numbers", "run": 0, "pass_rate": 33.33333333333333, "failure_reason": "reasoning", "errors": []}
+{"file_name": "pos_tagging", "run": 0, "pass_rate": 66.66666666666666, "failure_reason": "reasoning", "errors": []}
+{"file_name": "task_completion", "run": 0, "pass_rate": 66.66666666666666, "failure_reason": "reasoning", "errors": [{"error_tool_call_id": "toolu_01Mo5minA5VsAaQeQinoZve9", "error_tool_call": {"id": "toolu_01Mo5minA5VsAaQeQinoZve9", "function": {"name": "exec", "arguments": "{\"code\": \"for i, task in enumerate(tasks):\\n    task_id, task_name, completed = task\\n    if any(word in task_name.lower() for word in ['house', 'clean', 'housework', 'kitchen', 'room', 'vacuum', 'dust', 'cook', 'dinner', 'meal', 'prepare']):\\n        tasks[i] = (task_id, task_name, True)\"}"}, "type": "function"}, "error_content": "Error: Code raised an error, cannot unpack non-iterable Task object", "category": "type_error", "recovery_method": "correction"}]}
+{"file_name": "feed_filtering", "run": 1, "pass_rate": 91.66666666666666, "failure_reason": "reasoning", "errors": []}
+{"file_name": "filter_numbers", "run": 1, "pass_rate": 66.66666666666666, "failure_reason": "reasoning", "errors": []}
+{"file_name": "graph", "run": 1, "pass_rate": 83.33333333333334, "failure_reason": "reasoning", "errors": []}
+{"file_name": "menu", "run": 1, "pass_rate": 75.0, "failure_reason": "reasoning", "errors": []}
+{"file_name": "pos_tagging", "run": 1, "pass_rate": 44.44444444444444, "failure_reason": "reasoning", "errors": []}
+{"file_name": "stream_generator", "run": 1, "pass_rate": 50.0, "failure_reason": "state_operation_fail", "errors": []}
+{"file_name": "tiny_bookshop", "run": 1, "pass_rate": 0.0, "failure_reason": "state_operation_fail", "errors": []}
+{"file_name": "balance_parentheses", "run": 2, "pass_rate": 50.0, "failure_reason": "reasoning", "errors": []}
+{"file_name": "feed_filtering", "run": 2, "pass_rate": 83.33333333333334, "failure_reason": "reasoning", "errors": []}
+{"file_name": "filter_numbers", "run": 2, "pass_rate": 33.33333333333333, "failure_reason": "reasoning", "errors": []}
+{"file_name": "graph", "run": 2, "pass_rate": 66.66666666666666, "failure_reason": "reasoning", "errors": []}
+{"file_name": "pos_tagging", "run": 2, "pass_rate": 0.0, "failure_reason": "reasoning", "errors": []}
+{"file_name": "stream_generator", "run": 2, "pass_rate": 0.0, "failure_reason": "state_operation_fail", "errors": []}
+{"file_name": "balance_parentheses", "run": 3, "pass_rate": 50.0, "failure_reason": "reasoning", "errors": []}
+{"file_name": "feed_filtering", "run": 3, "pass_rate": 91.66666666666666, "failure_reason": "reasoning", "errors": []}
+{"file_name": "filter_numbers", "run": 3, "pass_rate": 66.66666666666666, "failure_reason": "reasoning", "errors": []}
+{"file_name": "graph", "run": 3, "pass_rate": 83.33333333333334, "failure_reason": "reasoning", "errors": []}
+{"file_name": "pos_tagging", "run": 3, "pass_rate": 0.0, "failure_reason": "reasoning", "errors": []}
+{"file_name": "stream_generator", "run": 3, "pass_rate": 0.0, "failure_reason": "state_operation_fail", "errors": []}
+{"file_name": "balance_parentheses", "run": 4, "pass_rate": 50.0, "failure_reason": "reasoning", "errors": []}
+{"file_name": "filter_numbers", "run": 4, "pass_rate": 33.33333333333333, "failure_reason": "reasoning", "errors": []}
+{"file_name": "graph", "run": 4, "pass_rate": 83.33333333333334, "failure_reason": "reasoning", "errors": []}
+{"file_name": "pos_tagging", "run": 4, "pass_rate": 55.55555555555556, "failure_reason": "reasoning", "errors": []}
+{"file_name": "stream_generator", "run": 4, "pass_rate": 0.0, "failure_reason": "state_operation_fail", "errors": []}
+{"file_name": "tiny_bookshop", "run": 4, "pass_rate": 0.0, "failure_reason": "state_operation_fail", "errors": []}
+{"file_name": "fact_checking", "run": 0, "pass_rate": 83.33333333333334, "failure_reason": "reasoning", "errors": []}
+{"file_name": "fact_checking", "run": 1, "pass_rate": 83.33333333333334, "failure_reason": "reasoning", "errors": []}
+{"file_name": "fact_checking", "run": 2, "pass_rate": 83.33333333333334, "failure_reason": "reasoning", "errors": []}
+{"file_name": "fact_checking", "run": 4, "pass_rate": 83.33333333333334, "failure_reason": "reasoning", "errors": []}
+{"file_name": "stores", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01T1tXsWpCdZPygpznGTbxNo", "error_tool_call": {"id": "toolu_01T1tXsWpCdZPygpznGTbxNo", "function": {"name": "exec", "arguments": "{\"code\": \"# Instantiate the stores with appropriate names and cities\\nkogane_store = SteampunkJewelryStore()\\nkogane_store.name = \\\"Kogane Clockwork\\\"\\nkogane_store.city = \\\"Tokyo\\\"\\n\\ncapybara_store = CafeStore()\\ncapybara_store.name = \\\"Capybara Stardust Cafe\\\" \\ncapybara_store.city = \\\"Coconut Dog City\\\"\\n\\n# Store the instances in a list called stores\\nstores = [kogane_store, capybara_store]\"}"}, "type": "function"}, "error_content": "Error: Code raised an error, Store.__init__() missing 2 required positional arguments: 'name' and 'city'", "category": "func_call_error", "recovery_method": "correction"}]}
+{"file_name": "calendar", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_014bDWWRwu9o8wH2JaqabfRq", "error_tool_call": {"id": "toolu_014bDWWRwu9o8wH2JaqabfRq", "function": {"name": "exec", "arguments": "{\"code\": \"import datetime\\n\\n# Create a new event for tire changing appointment\\nevent = Event(\\n    id=datetime.datetime.now().microsecond,  # Generate a simple ID\\n    title=\\\"Get tires changed\\\",\\n    start_time=datetime.datetime(2025, 4, 11, 12, 0),  # April 11, 2025 at 12:00 PM\\n    end_time=datetime.datetime(2025, 4, 11, 14, 0),    # April 11, 2025 at 2:00 PM\\n    participants=[]\\n)\\n\\n# Add the event to the calendar\\nadd_event(event)\\n\\n# No response is expected for this request\\nresponse = None\"}"}, "type": "function"}, "error_content": "Error: Code raised an error, 2 validation errors for Event\nid\n  Input should be a valid string [type=string_type, input_value=526992, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.10/v/string_type\ndescription\n  Field required [type=missing, input_value={'id': 526992, 'title': '... 0), 'participants': []}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.10/v/missing", "category": "type_error", "recovery_method": "correction"}]}
+{"file_name": "calendar", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "coffeeshop", "run": 1, "pass_rate": 52.63157894736842, "failure_reason": "reasoning", "errors": [{"error_tool_call_id": "toolu_01Vv3nfbuMLfTST4j8z35dEn", "error_tool_call": {"id": "toolu_01Vv3nfbuMLfTST4j8z35dEn", "function": {"name": "raise", "arguments": "{\"variable\": \"Ref(@375[<class 'ValueError'>])\"}"}, "type": "function"}, "error_content": "Error: Undefined variable `Ref(@375[<class 'ValueError'>])`", "category": "forbidden_var", "recovery_method": "correction"}]}
+{"file_name": "stores", "run": 0, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "stores", "run": 1, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "stores", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "stores", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "calendar", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01LtJxKaFCjmSWxhyiHL6V3b", "error_tool_call": {"id": "toolu_01LtJxKaFCjmSWxhyiHL6V3b", "function": {"name": "eval", "arguments": "{\"expression\": \"Found 1 meeting with Gavin this week: Weekly 1:1 on April 7, 2025 from 12:00 PM to 1:00 PM\"}"}, "type": "function"}, "error_content": "Error: Nightjar code raised an error, invalid syntax (<string>, line 1)", "category": "state_op_error", "recovery_method": "correction"}, {"error_tool_call_id": "toolu_01VjmdoAE9zAP98C3MHa7rVz", "error_tool_call": {"id": "toolu_01VjmdoAE9zAP98C3MHa7rVz", "function": {"name": "done", "arguments": "{}"}, "type": "function"}, "error_content": "Error: Undefined output variable `response`", "category": "missing_var", "recovery_method": "correction"}]}
+{"file_name": "coffeeshop", "run": 2, "pass_rate": 96.7741935483871, "failure_reason": "give_up", "errors": [{"error_tool_call_id": "toolu_014eKMobpzmYkxGLdodop2Ps", "error_tool_call": {"id": "toolu_014eKMobpzmYkxGLdodop2Ps", "function": {"name": "raise", "arguments": "{\"variable\": \"{\\\"value_type\\\": \\\"object\\\", \\\"addr\\\": 681}\"}"}, "type": "function"}, "error_content": "Error: Undefined variable `{\"value_type\": \"object\", \"addr\": 681}`", "category": "state_op_error", "recovery_method": "correction"}, {"error_tool_call_id": "toolu_01GgRqcWBCNx8W97TKA15WYt", "error_tool_call": {"id": "toolu_01GgRqcWBCNx8W97TKA15WYt", "function": {"name": "raise", "arguments": "{\"variable\": \"@172\"}"}, "type": "function"}, "error_content": "Error: Undefined variable `@172`", "category": "forbidden_var", "recovery_method": "correction"}]}
+{"file_name": "calendar", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "coffeeshop", "run": 3, "pass_rate": 100.0, "failure_reason": null, "errors": [{"error_tool_call_id": "toolu_01QehC57zdMXYpGaf1Uc5BJj", "error_tool_call": {"id": "toolu_01QehC57zdMXYpGaf1Uc5BJj", "function": {"name": "raise", "arguments": "{\"variable\": \"@415\"}"}, "type": "function"}, "error_content": "Error: Undefined variable `@415`", "category": "forbidden_var", "recovery_method": "correction"}]}
+{"file_name": "calendar", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "coffeeshop", "run": 4, "pass_rate": 100.0, "failure_reason": null, "errors": []}
+{"file_name": "wordle_solver", "run": 2, "pass_rate": 100.0, "failure_reason": null, "errors": []}
