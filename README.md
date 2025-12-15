@@ -1,5 +1,5 @@
 <div align="center">
-<img src="./assets/nightjar2.png" alt="logo" width="400px" margin="10px"></img>
+<img src="https://github.com/psg-mit/nightjarpy/blob/main/assets/nightjar2.png" alt="logo" width="400px" margin="10px"></img>
 
 [![PyPI](https://img.shields.io/pypi/v/nightjarpy)](https://pypi.org/project/nightjarpy)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/nightjarpy)
@@ -61,7 +61,6 @@ Nightjar allows you to write natural language code that integrates seamlessly wi
 ```python
 import nightjarpy as nj
 
-
 @nj.fn
 def calculate_average(numbers):
     """natural
@@ -71,8 +70,8 @@ def calculate_average(numbers):
 
 result = calculate_average([1, "2", "three", "cuatro", "五"])
 print(result)  # 3.0
-
 ```
+Note: natural code is executed by LLMs so the results may not always be correct.
 
 ### Object Manipulation
 
