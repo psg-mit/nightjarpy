@@ -35,7 +35,7 @@ pip install nightjarpy[dev]
 
 ### Docker Container
 
-You can also run NightjarPy in a Docker container for consistent environments:
+You can also run Nightjar in a Docker container for consistent environments:
 
 ```bash
 # Build the Docker image
@@ -217,7 +217,7 @@ def complex_calculation(data):
 
 ## Syntax
 
-NightjarPy uses a simple syntax for embedding natural language in Python code:
+Nightjar uses a simple syntax for embedding natural language in Python code:
 
 ### Function Decorators
 
