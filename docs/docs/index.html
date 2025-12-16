@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nightjar Documentation</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body class="docs">
+  <header>
+    <nav class="nav">
+      <a class="logo" href="../index.html">
+        <img src="../assets/nightjar2.png" alt="Nightjar" />
+      </a>
+      <div class="nav-links">
+        <a href="../index.html">Home</a>
+        <a href="index.html">Docs</a>
+        <a href="https://github.com/psg-mit/nightjarpy" target="_blank" rel="noreferrer">GitHub</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <div class="docs-layout">
+      <aside class="toc">
+        <h2>Contents</h2>
+        <ul>
+          <li><a href="#quickstart">Quickstart</a></li>
+          <li><a href="#syntax">Writing natural code</a></li>
+          <li><a href="#objects">Working with objects</a></li>
+          <li><a href="#control">Control flow</a></li>
+          <li><a href="#configs">Configuration</a></li>
+          <li><a href="#tips">Tips</a></li>
+        </ul>
+      </aside>
+
+      <article>
+        <section class="docs-hero">
+          <div class="docs-hero-line">Nightjar Docs</div>
+        </section>
+        <h1 id="quickstart">Quickstart</h1>
+        <p>Nightjar ships as the <code>nightjarpy</code> package. Install it directly from PyPI:</p>
+        <pre class="snippet"><code>pip install nightjarpy
+</code></pre>
+        <div class="callout">Nightjar performs arbitrary code execution. Use at own risk.</div>
+
+        <h2 id="syntax">Writing natural code</h2>
+        <p>The <code>@nj.fn</code> decorator turns an ordinary Python function into one whose body is implemented in natural language. Use <code>&lt;variable&gt;</code> to reference state and <code>&lt;:new_variable&gt;</code> to produce new values.</p>
+        <pre class="snippet"><code>import nightjarpy as nj
+
+@nj.fn
+def calculate_average(numbers):
+    """natural
+    Consider the values of &lt;numbers&gt;
+    and compute the semantic average as &lt;:result&gt;
+    """
+    return result
+
+print(calculate_average([1, "2", "three", "cuatro", "五"]))
+</code></pre>
+
+        <h2 id="objects">Working with objects</h2>
+        <p>Natural blocks share the heap of th Python program, meaning you can use natural code to inspect and update Python objects.</p>
+        <pre class="snippet"><code>import nightjarpy as nj
+
+class Email:
+    def __init__(self, subject, body, sender):
+        self.subject = subject
+        self.body = body
+        self.sender = sender
+        self.category = None
+        self.priority = None
+
+email = Email("URGENT: Server down", "...", "ops@company.com")
+
+@nj.fn
+def categorize_email(email: Email):
+    """natural
+    Analyze the &lt;email&gt; content and assign its
+    category plus a priority. Update the object in place.
+    """
+
+categorize_email(email)
+print(email.category, email.priority)
+</code></pre>
+
+        <h2 id="control">Control flow</h2>
+        <p>Natural code can implement control flow in the Python program. It can raise exceptions, break and continue loops, and return from functions.</p>
+        <pre class="snippet"><code>@nj.fn
+def use_heal_item(player):
+    for item in player.inventory:
+        """natural
+        Check if &lt;item&gt; can heal the &lt;player&gt;. If it can, break.
+        """
+    player.health += item.strength
+    player.inventory.remove(item)
+</code></pre>
+
+        <h2 id="configs">Configuration</h2>
+        <p>Nightjar exposes a simple config object for tuning LLM calls per function.</p>
+        <pre class="snippet"><code>import nightjarpy as nj
+
+config = nj.DEFAULT_CONFIG
+config.llm = nj.LLMConfig(
+    model="openai/gpt-4o",
+    temperature=0,
+)
+
+@nj.fn(config=config)
+def complex_calculation(data):
+    """natural
+    Find the outliers in &lt;data&gt; and save as &lt;:outliers&gt;
+    """
+    return outliers
+</code></pre>
+        <p>Set environment variables to authenticate with providers:</p>
+        <pre class="snippet"><code>OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+</code></pre>
+
+        <h2 id="tips">Tips</h2>
+        <ul>
+          <li>Natural blocks are executed with LLM APIs, so costs scale with usage.</li>
+          <li>Nightjar performs arbitrary code execution, so sandbox programs for safety.</li>
+        </ul>
+      </article>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>Nightjar</span>
+      <div class="nav-links">
+        <a href="../index.html">Home</a>
+        <a href="https://github.com/psg-mit/nightjarpy" target="_blank" rel="noreferrer">GitHub</a>
+      </div>
+    </div>
+  </footer>
+  <script src="../assets/syntax.js"></script>
+</body>
+</html>
