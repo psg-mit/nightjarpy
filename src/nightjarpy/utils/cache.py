@@ -15,6 +15,7 @@ from diskcache import FanoutCache
 logger = logging.getLogger(__name__)
 
 
+# From https://github.com/stanfordnlp/dspy/blob/main/dspy/clients/cache.py
 class Cache:
     """
     `Cache` provides 2 levels of caching (in the given order):

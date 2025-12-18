@@ -239,3 +239,17 @@ def function_name(parameters):
 
 - `<variable_name>` - Reference existing Python variables
 - `<:new_variable>` - Create new variables
+
+# Paper & Citation
+
+Read more about shared program state in our [paper](https://arxiv.org/abs/2512.14805).
+
+Please cite Nightjar as follows:
+```
+@article{cheng2025sharing,
+    title     = {Sharing State Between Prompts and Programs},
+    author    = {Cheng, Ellie Y. and Weber, Logan and Jin, Tian and Carbin, Michael},
+    journal   = {arXiv preprint arXiv:2512.14805},
+    year      = {2025},
+}
+```
