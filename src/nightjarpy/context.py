@@ -306,9 +306,7 @@ class Context:
 
                 for k, v in sorted(val.items(), key=lambda x: str(x[0])):
                     if not isinstance(k, (Primitive, tuple, NotSupportedDataType)):
-                        raise NotImplementedError(
-                            f"Dictionary keys must be an immutable type for now, got {type(k)} for {val}"
-                        )
+                        raise NotImplementedError(f"Dictionary keys must be an immutable type for now")
 
                     if id(val) == id(v):
                         # Don't recurse on self
