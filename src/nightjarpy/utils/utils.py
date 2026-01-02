@@ -43,15 +43,18 @@ from pydantic import BaseModel
 from tap.utils import type_to_str
 from typing_inspect import get_args, get_origin
 
+from nightjarpy.configs import LLMConfig
+
 if TYPE_CHECKING:
+    from nightjarpy.llm.base import LLM
     from nightjarpy.context import Context
 
-from nightjarpy.effects import Effect, Parameter
 from nightjarpy.types import (
     NJ_VAR_PREFIX,
     Argument,
     ChatMessage,
     Class,
+    Effect,
     EffectCall,
     EffectError,
     EffectParams,
@@ -65,6 +68,7 @@ from nightjarpy.types import (
     NotSupportedDataType,
     Object,
     Param,
+    Parameter,
     Primitive,
     Ref,
     RegName,
@@ -1718,3 +1722,30 @@ def parallelize_effects(effects: List[ToolCall], effect_mapping: Dict[str, Effec
     # add the rest from the one that had an error as sequential
     batches.extend([[x] for x in cannot_parallelize])
     return batches
+
+
+def create_llm(config: LLMConfig) -> "LLM":
+    """
+    Factory function to create the appropriate LLM instance based on model name.
+
+    Args:
+        config: LLM configuration containing model name
+
+    Returns:
+        Configured LLM instance
+
+    Raises:
+        ValueError: If model provider is not supported
+    """
+    model = config.model.lower()
+
+    if model.startswith("openai/"):
+        from nightjarpy.llm.clients.openai import OpenAI
+
+        return OpenAI(config)
+    elif model.startswith("anthropic/"):
+        from nightjarpy.llm.clients.anthropic import Anthropic
+
+        return Anthropic(config)
+    else:
+        raise ValueError(f"Unsupported model provider: {model}. Supported providers: openai/, anthropic/")

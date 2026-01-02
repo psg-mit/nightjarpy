@@ -1,6 +1,7 @@
+import inspect
 import logging
 import re
-import types
+import sys
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -23,6 +24,8 @@ from typing import (
 if TYPE_CHECKING:
     from nightjarpy.context import Context
 
+from nightjarpy.compilation.compile import compile_nj
+from nightjarpy.configs import ExecutionSubstrate
 from nightjarpy.types import (
     SCHEMA,
     SCHEMA_DEFS,
@@ -30,11 +33,14 @@ from nightjarpy.types import (
     SUCCESS,
     VALUE_SCHEMA,
     Done,
+    Effect,
     EffectError,
     EffectParams,
+    EffectSet,
     Immutable,
     Label,
     NaturalCode,
+    Parameter,
     Ref,
     RegName,
     Success,
@@ -44,113 +50,6 @@ from nightjarpy.types import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-class Parameter(NamedTuple):
-    name: str
-    type: type[EffectParams] | types.UnionType
-    access: Optional[Literal["read", "write"]] = None
-
-
-class Effect:
-    name: str
-    description: str
-    # Parameters for the LLM to generate, does not include parameters that must be given by the runtime handler
-    parameters: Sequence[Parameter]
-    schema_def: bool
-    use_functions: bool
-
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        parameters: Sequence[Parameter],
-        handler,
-        schema_def: bool = False,
-        use_functions: bool = False,
-    ):
-        self.name = name
-        self.description = description
-        self.parameters = parameters
-        self.schema_def = schema_def
-        self.handler = handler
-        self.use_functions = use_functions
-
-    def handler(self, context: "Context", *args, **kwargs) -> Any: ...
-
-    def to_schema(self, model_name: str) -> Dict[str, Any]:
-        model = model_name.lower()
-
-        if model.startswith("openai/"):
-            return self.to_openai_function()
-        elif model.startswith("anthropic/"):
-            return self.to_anthropic_function()
-        else:
-            raise ValueError(f"Unsupported model provider: {model}. Supported providers: openai/, anthropic/")
-
-    def _parameter_schema(self) -> Dict[str, Any]:
-        schema = {
-            "type": "object",
-            "properties": {k: SCHEMA[v] for k, v, _ in self.parameters},
-            "required": [p.name for p in self.parameters],
-            "additionalProperties": False,
-        }
-
-        if self.schema_def:
-            schema["$defs"] = SCHEMA_DEFS if self.use_functions else SCHEMA_DEFS_NOFUNC
-
-        return schema
-
-    def to_openai_schema(self) -> Dict[str, Any]:
-        """
-        Returns as an OpenAI structured output schema
-        """
-        schema = {
-            "type": "object",
-            "description": self.description,
-            "properties": {
-                "name": {"enum": [self.name]},
-                "args": self._parameter_schema(),
-            },
-            "additionalProperties": False,
-            "required": ["name", "args"],
-            "strict": True,
-        }
-
-        return schema
-
-    def to_openai_function(self) -> Dict[str, Any]:
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self._parameter_schema(),
-                "strict": True,
-            },
-        }
-
-    def to_anthropic_function(self) -> Dict[str, Any]:
-        """Convert tool to Anthropic's tool format."""
-        return {
-            "name": self.name,
-            "description": self.description,
-            "input_schema": self._parameter_schema(),
-        }
-
-    def __call__(self, context: "Context", *args, **kwargs) -> Any:
-        return self.handler(context, *args, **kwargs)
-
-
-@dataclass(frozen=True)
-class EffectSet:
-    effects: FrozenSet[Effect]
-    final_effects: FrozenSet[str]  # Name of the effects to force as the final effect in a compilation/jit setup
-    disable_compile: FrozenSet[str]  # Name of effects that are disabled during compilation
-
-    def set_use_functions(self, use_functions: bool):
-        for effect in self.effects:
-            effect.use_functions = use_functions
 
 
 def sanitize_code(expr: str) -> str:
@@ -791,7 +690,10 @@ def exec_handler(context: "Context", code: str) -> Success:
 
     # Update the locals
     for k, v in new_python_locals.items():
-        if k.startswith("nj_") or k in ["self"]:
+        if k.startswith("nj_") or k in ["self", "nightjarpy"]:
+            continue
+        if inspect.ismodule(v) and v.__name__ in sys.stdlib_module_names:
+            # skip standard libraries
             continue
         ref = context.encode_python_value(v, {})
 
@@ -805,6 +707,41 @@ exec_effect = Effect(
     description="Execute a Python code block in the current context. It cannot contain natural blocks. This tool does not return anything. Issue only 1-10 lines of code at a time. You cannot use `help`. You cannot see `print` statements. Do not use <var> or <:var> syntax. Code must be valid Python code",
     parameters=(Parameter("code", str),),
     handler=exec_handler,
+)
+
+
+def exec_nested_handler(context: "Context", code: str) -> Success:
+    # Execute the function
+    logger.info(f"Original code:\n{code}")
+
+    python_locals, python_globals = context.get_closure(context.fp)
+
+    config = context.config.inc_recursion_depth()
+
+    logger.info(f"EXEC recursion depth: {config.recursion_depth}")
+
+    code = compile_nj(source_code=code, config=config, filename="exec", funcname="exec_code")
+
+    logger.info(f"Compiled code:\n{code}")
+
+    return exec_handler(context, code)
+
+
+exec_nested_effect = Effect(
+    name="exec",
+    description="""Execute a Python code block in the current context. The Python code may optionally contain natural blocks (which makes LLM calls or Python code evaluation). This tool does not return anything. Issue only 1-10 lines of code at a time. You cannot use `help`. You cannot see `print` statements. Only use <var> or <:var> syntax in the natural blocks. Code must be valid Python code with optional natural blocks. Natural blocks are embedded like so:
+```
+# python code...
+x = 5
+\"\"\"natural
+natural language instruction to do something, can reference Python variables using <x> syntax and write Python variables using <:y> syntax. Python data are passed by reference so updating attributes of <x> is reflected on the Python data x itself
+\"\"\"
+print(y)
+```
+Make sure the natural block starts with `\"\"\"natural` otherwise the parser won't work.
+""",
+    parameters=(Parameter("code", str),),
+    handler=exec_nested_handler,
 )
 
 
@@ -1027,3 +964,38 @@ PYTHON_EFFECTS_V1 = EffectSet(
     ),
     disable_compile=frozenset(),
 )
+
+
+PYTHON_NESTED_EFFECTS = EffectSet(
+    effects=frozenset(
+        [
+            eval_effect,
+            exec_nested_effect,
+            raise_var_effect,
+            break_effect,
+            continue_effect,
+            return_var_effect,
+            done_effect,
+        ]
+    ),
+    final_effects=frozenset(
+        [done_effect.name, raise_var_effect.name, break_effect.name, continue_effect.name, return_var_effect.name]
+    ),
+    disable_compile=frozenset(),
+)
+
+
+def get_effect_set(substrate: "ExecutionSubstrate") -> EffectSet:
+    if substrate == ExecutionSubstrate.PYTHON:
+        effect_set = PYTHON_EFFECTS_V1
+    elif substrate == ExecutionSubstrate.PYTHON_NESTED:
+        effect_set = PYTHON_NESTED_EFFECTS
+    elif substrate == ExecutionSubstrate.BASE_NOREG:
+        effect_set = BASE_EFFECTS_NOREG
+    elif substrate == ExecutionSubstrate.PYTHON_BASE_ISOLATED_NOREG:
+        effect_set = PYTHON_BASE_ISOLATED_EFFECTS_NOREG
+    elif substrate == ExecutionSubstrate.PYTHON_BASE_NOREG:
+        effect_set = PYTHON_BASE_EFFECTS_NOREG
+    else:
+        raise ValueError(f"Unknown execution substate {substrate}")
+    return effect_set

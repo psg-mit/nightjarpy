@@ -13,6 +13,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    FrozenSet,
     Generic,
     Iterable,
     List,
@@ -943,3 +944,110 @@ class ResponseFormat(Generic[ResponseType]):
             return json.loads(x)
         else:
             return self.res_schema.model_validate_json(x)
+
+
+class Parameter(NamedTuple):
+    name: str
+    type: type[EffectParams] | types.UnionType
+    access: Optional[Literal["read", "write"]] = None
+
+
+class Effect:
+    name: str
+    description: str
+    # Parameters for the LLM to generate, does not include parameters that must be given by the runtime handler
+    parameters: Sequence[Parameter]
+    schema_def: bool
+    use_functions: bool
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        parameters: Sequence[Parameter],
+        handler,
+        schema_def: bool = False,
+        use_functions: bool = False,
+    ):
+        self.name = name
+        self.description = description
+        self.parameters = parameters
+        self.schema_def = schema_def
+        self.handler = handler
+        self.use_functions = use_functions
+
+    def handler(self, context: "Context", *args, **kwargs) -> Any: ...
+
+    def to_schema(self, model_name: str) -> Dict[str, Any]:
+        model = model_name.lower()
+
+        if model.startswith("openai/"):
+            return self.to_openai_function()
+        elif model.startswith("anthropic/"):
+            return self.to_anthropic_function()
+        else:
+            raise ValueError(f"Unsupported model provider: {model}. Supported providers: openai/, anthropic/")
+
+    def _parameter_schema(self) -> Dict[str, Any]:
+        schema = {
+            "type": "object",
+            "properties": {k: SCHEMA[v] for k, v, _ in self.parameters},
+            "required": [p.name for p in self.parameters],
+            "additionalProperties": False,
+        }
+
+        if self.schema_def:
+            schema["$defs"] = SCHEMA_DEFS if self.use_functions else SCHEMA_DEFS_NOFUNC
+
+        return schema
+
+    def to_openai_schema(self) -> Dict[str, Any]:
+        """
+        Returns as an OpenAI structured output schema
+        """
+        schema = {
+            "type": "object",
+            "description": self.description,
+            "properties": {
+                "name": {"enum": [self.name]},
+                "args": self._parameter_schema(),
+            },
+            "additionalProperties": False,
+            "required": ["name", "args"],
+            "strict": True,
+        }
+
+        return schema
+
+    def to_openai_function(self) -> Dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self._parameter_schema(),
+                "strict": True,
+            },
+        }
+
+    def to_anthropic_function(self) -> Dict[str, Any]:
+        """Convert tool to Anthropic's tool format."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "input_schema": self._parameter_schema(),
+        }
+
+    def __call__(self, context: "Context", *args, **kwargs) -> Any:
+        return self.handler(context, *args, **kwargs)
+
+
+@dataclass(frozen=True)
+class EffectSet:
+    effects: FrozenSet[Effect]
+    final_effects: FrozenSet[str]  # Name of the effects to force as the final effect in a compilation/jit setup
+    disable_compile: FrozenSet[str]  # Name of effects that are disabled during compilation
+
+    def set_use_functions(self, use_functions: bool):
+        for effect in self.effects:
+            effect.use_functions = use_functions

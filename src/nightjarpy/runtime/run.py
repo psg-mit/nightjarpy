@@ -21,8 +21,7 @@ from nightjarpy.configs import (
     LLMConfig,
 )
 from nightjarpy.context import Context
-from nightjarpy.effects import Done, Effect
-from nightjarpy.llm.factory import create_llm
+from nightjarpy.effects import Done, Effect, get_effect_set
 from nightjarpy.types import (
     SUCCESS,
     AssistantMessage,
@@ -42,21 +41,20 @@ from nightjarpy.types import (
     is_function,
 )
 from nightjarpy.utils import (
+    MAX_SERIALIZE_LEN,
     NJ_TELEMETRY,
     LLMUsage,
+    create_llm,
     deserialize_json,
     enable_nj_logging,
+    extract_effects,
     extract_label,
     extract_variable,
+    parallelize_effects,
     parse_effect,
     serialize,
-    serialize_json,
-)
-from nightjarpy.utils.utils import (
-    MAX_SERIALIZE_LEN,
-    extract_effects,
-    parallelize_effects,
     serialize_effect,
+    serialize_json,
     validate_args,
     validate_kwargs,
 )
@@ -190,14 +188,6 @@ def execute(
 
     filled_in_system_prompt = interpreter_config.prompt_template.system.format(**system_prompt_kwargs)
 
-    effect_set = ExecutionSubstrate.get_effect_set(interpreter_config.execution_substrate)
-
-    effect_set.set_use_functions(config.use_functions)
-
-    serialize_fun = serialize_json if config.llm_config.json_structured_output else serialize
-
-    effect_mapping: Dict[str, Effect] = {e.name: e for e in effect_set.effects}
-
     natural_code = textwrap.dedent(natural_code).strip()
     output_vars, input_vars = extract_variable(natural_code)
     valid_vars = input_vars | output_vars.keys()
@@ -216,7 +206,7 @@ def execute(
         output_vars=set(output_vars.keys()),
         valid_labels=set(valid_labels_parsed) if valid_labels_parsed else set(),
         python_frame=python_frame,
-        llm_config=config.llm_config,
+        config=config,
         compute_prompt_template=interpreter_config.compute_prompt_template,
         use_functions=config.use_functions,
     )
@@ -224,6 +214,19 @@ def execute(
     logger.info(f"input vars: {input_vars}")
     logger.info(f"output vars: {output_vars}")
     logger.info(f"labels: {valid_labels_parsed}")
+
+    effect_set = get_effect_set(interpreter_config.execution_substrate)
+
+    if interpreter_config.execution_substrate == ExecutionSubstrate.PYTHON_NESTED:
+        if context.config.recursion_depth >= context.config.recursion_limit:
+            # Disable nested natural blocks
+            effect_set = get_effect_set(ExecutionSubstrate.PYTHON)
+
+    effect_set.set_use_functions(config.use_functions)
+
+    serialize_fun = serialize_json if config.llm_config.json_structured_output else serialize
+
+    effect_mapping: Dict[str, Effect] = {e.name: e for e in effect_set.effects}
 
     # Lookup input vars
     # Eagerly load input vars into context in the current frame in the Context handler

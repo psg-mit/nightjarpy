@@ -23,7 +23,6 @@ from nightjarpy.configs import (
     ExecutionSubstrate,
     InterpreterConfig,
 )
-from nightjarpy.llm.factory import create_llm
 from nightjarpy.types import (
     NJ_VAR_PREFIX,
     EffectException,
@@ -32,7 +31,7 @@ from nightjarpy.types import (
     ToolCall,
     UserMessage,
 )
-from nightjarpy.utils import NJ_TELEMETRY, VarGenerator, extract_variable
+from nightjarpy.utils import NJ_TELEMETRY, VarGenerator, create_llm, extract_variable
 from nightjarpy.utils.utils import extract_effects, extract_label
 
 logger = logging.getLogger(__name__)

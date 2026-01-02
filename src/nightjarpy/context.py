@@ -25,8 +25,7 @@ from typing import (
 import numpy as np
 from pydantic import BaseModel
 
-from nightjarpy.configs import InterpreterConfig, LLMConfig
-from nightjarpy.llm.factory import create_llm
+from nightjarpy.configs import Config, InterpreterConfig, LLMConfig
 from nightjarpy.prompts.base import PromptTemplate
 from nightjarpy.types import (
     SCHEMA_DEFS,
@@ -63,6 +62,7 @@ from nightjarpy.types import (
 from nightjarpy.utils import VarGenerator
 from nightjarpy.utils.utils import (
     call_function_by_sig,
+    create_llm,
     deserialize,
     deserialize_json,
     get_object_attributes,
@@ -143,7 +143,7 @@ class Context:
         output_vars: Set[Variable],
         valid_labels: Set[Label],
         python_frame: Optional[types.FrameType],
-        llm_config: LLMConfig,
+        config: Config,
         compute_prompt_template: Optional[PromptTemplate],
         use_functions: bool,
     ):
@@ -162,8 +162,8 @@ class Context:
         self.output_vars = output_vars
         self.valid_labels = valid_labels
         self.classes: Dict[str, Type] = {}
-        self.llm = create_llm(llm_config)
-        self.llm_config = llm_config
+        self.llm = create_llm(config.llm_config)
+        self.config = config
         self.compute_prompt_template = compute_prompt_template
         self.forbidden = set([property, object])
         self.use_functions = use_functions
@@ -306,7 +306,9 @@ class Context:
 
                 for k, v in sorted(val.items(), key=lambda x: str(x[0])):
                     if not isinstance(k, (Primitive, tuple, NotSupportedDataType)):
-                        raise NotImplementedError(f"Dictionary keys must be an immutable type for now")
+                        # logger.warning(f"Dictionary keys must be an immutable type for now... skipping")
+                        continue
+                        # raise NotImplementedError(f"Dictionary keys must be an immutable type for now")
 
                     if id(val) == id(v):
                         # Don't recurse on self
@@ -384,6 +386,8 @@ class Context:
                 self.orig_py_obj[func_ref] = val
 
                 return func_ref
+            # elif inspect.ismodule(val):
+
             elif isinstance(val, type):
                 enc_attributes: Dict[str, Immutable] = {}
                 obj_ref = self.new_ref()
@@ -490,6 +494,7 @@ class Context:
                 #     self.valid_vars.add(Variable(val.__qualname__))
 
                 return obj_ref
+
             elif isinstance(val, object):
                 enc_obj_dict: Dict[str, Immutable] = {}
                 obj_ref = self.new_ref()
@@ -580,7 +585,9 @@ class Context:
                         dec_memo[val] = dec_val
                     for k, v in enc_val.items():
                         if not isinstance(k, (Primitive, tuple, NotSupportedDataType)):
-                            raise NotImplementedError("Dictionary keys must be an immutable type for now")
+                            # logger.warning(f"Dictionary keys must be an immutable type for now... skipping")
+                            continue
+                            # raise NotImplementedError("Dictionary keys must be an immutable type for now")
 
                         # enc_v = self.heap.get(v)
                         if id(val) == id(v):
@@ -1166,7 +1173,7 @@ class Context:
         self.goto(label, val)
 
     def compute(self, instruction: NaturalCode, args: List[Value]) -> Value:
-        json_structured_output = self.llm_config.json_structured_output
+        json_structured_output = self.config.llm_config.json_structured_output
 
         if self.compute_prompt_template is None:
             raise RuntimeError("Missing prompt for `compute`")

@@ -5,19 +5,13 @@ from typing import List, Literal, Optional
 import dotenv
 from pydantic import BaseModel
 
-from nightjarpy.effects import (
-    BASE_EFFECTS_NOREG,
-    PYTHON_BASE_EFFECTS_NOREG,
-    PYTHON_BASE_ISOLATED_EFFECTS_NOREG,
-    PYTHON_EFFECTS_V1,
-    EffectSet,
-)
 from nightjarpy.prompts.base import PromptTemplate
 from nightjarpy.prompts.prompts import (
     COMPILER_AOT_V0_PROMPT,
     INTERPRETER_BASE_NOREG_V0_PROMPT,
     INTERPRETER_PYTHON_BASE_NOREG_V0_PROMPT,
     INTERPRETER_PYTHON_EAGER_V0_PROMPT,
+    INTERPRETER_PYTHON_NESTED_V0_PROMPT,
     INTERPRETER_PYTHON_V0_PROMPT,
 )
 
@@ -44,23 +38,10 @@ class LLMConfig(BaseModel):
 
 class ExecutionSubstrate(Enum):
     PYTHON = "python"
+    PYTHON_NESTED = "python_nested"
     BASE_NOREG = "base_noreg"
     PYTHON_BASE_ISOLATED_NOREG = "python_base_isolated_noreg"
     PYTHON_BASE_NOREG = "python_base_noreg"
-
-    @classmethod
-    def get_effect_set(cls, substrate: "ExecutionSubstrate") -> EffectSet:
-        if substrate == ExecutionSubstrate.PYTHON:
-            effect_set = PYTHON_EFFECTS_V1
-        elif substrate == ExecutionSubstrate.BASE_NOREG:
-            effect_set = BASE_EFFECTS_NOREG
-        elif substrate == ExecutionSubstrate.PYTHON_BASE_ISOLATED_NOREG:
-            effect_set = PYTHON_BASE_ISOLATED_EFFECTS_NOREG
-        elif substrate == ExecutionSubstrate.PYTHON_BASE_NOREG:
-            effect_set = PYTHON_BASE_EFFECTS_NOREG
-        else:
-            raise ValueError(f"Unknown execution substate {substrate}")
-        return effect_set
 
 
 class ExecutionStrategy(Enum):
@@ -106,6 +87,8 @@ class Config(BaseModel):
     interpreter_config: Optional[InterpreterConfig]
     llm_config: LLMConfig
     use_functions: bool = False
+    recursion_limit: int = 1
+    recursion_depth: int = 0
 
     model_config = {"frozen": True}
 
@@ -114,6 +97,9 @@ class Config(BaseModel):
 
     def enable_cache(self) -> "Config":
         return self.model_copy(update={"llm_config": self.llm_config.model_copy(update={"cache": True})})
+
+    def inc_recursion_depth(self) -> "Config":
+        return self.model_copy(update={"recursion_depth": self.recursion_depth + 1})
 
     def with_interpreter_updates(
         self,
@@ -240,6 +226,23 @@ INTERPRETER_PYTHON_JSON_CONFIG = Config(
     interpreter_config=InterpreterConfig(
         execution_substrate=ExecutionSubstrate.PYTHON,
         prompt_template=INTERPRETER_PYTHON_V0_PROMPT,
+        eager_load=False,
+        show_effect_count=False,
+    ),
+    use_functions=True,
+    llm_config=LLMConfig(
+        tool_choice="required",
+        cache=False,
+        json_structured_output=True,
+    ),
+)
+
+INTERPRETER_PYTHON_NESTED_JSON_CONFIG = Config(
+    execution_strategy=ExecutionStrategy.INTERPRETER,
+    compiler_config=None,
+    interpreter_config=InterpreterConfig(
+        execution_substrate=ExecutionSubstrate.PYTHON_NESTED,
+        prompt_template=INTERPRETER_PYTHON_NESTED_V0_PROMPT,
         eager_load=False,
         show_effect_count=False,
     ),
