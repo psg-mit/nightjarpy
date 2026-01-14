@@ -39,6 +39,7 @@ class LLMConfig(BaseModel):
 class ExecutionSubstrate(Enum):
     PYTHON = "python"
     PYTHON_NESTED = "python_nested"
+    PYTHON_LLM = "python_llm"
     BASE_NOREG = "base_noreg"
     PYTHON_BASE_ISOLATED_NOREG = "python_base_isolated_noreg"
     PYTHON_BASE_NOREG = "python_base_noreg"
@@ -73,7 +74,7 @@ class InterpreterConfig(BaseModel):
     use_nonce: bool = False
     eager_load: bool = False
     show_effect_count: bool = False
-    max_serialize_len: int = 1024
+    max_serialize_len: int = 2048
     steps_ahead: int = 1
     discard_steps_ahead: bool = True
     seed: Optional[int] = None
@@ -86,6 +87,7 @@ class Config(BaseModel):
     compiler_config: Optional[CompilerConfig]
     interpreter_config: Optional[InterpreterConfig]
     llm_config: LLMConfig
+    compute_llm_config: Optional[LLMConfig] = None
     use_functions: bool = False
     recursion_limit: int = 1
     recursion_depth: int = 0
@@ -103,35 +105,33 @@ class Config(BaseModel):
 
     def with_interpreter_updates(
         self,
-        max_effects: Optional[int] = None,
-        prompt_template: Optional[PromptTemplate] = None,
-        compute_prompt_template: Optional[PromptTemplate] = None,
-        var_generator_init: Optional[int] = None,
-        steps_ahead: Optional[int] = None,
-        use_nonce: Optional[bool] = None,
+        **kwargs,
+        # max_effects: Optional[int] = None,
+        # prompt_template: Optional[PromptTemplate] = None,
+        # compute_prompt_template: Optional[PromptTemplate] = None,
+        # var_generator_init: Optional[int] = None,
+        # steps_ahead: Optional[int] = None,
+        # use_nonce: Optional[bool] = None,
     ) -> "Config":
         """Create a copy of this config with updated interpreter settings."""
         if self.interpreter_config is None:
             return self.model_copy()
 
-        updates = {}
-        if max_effects is not None:
-            updates["max_effects"] = max_effects
-        if prompt_template is not None:
-            updates["prompt_template"] = prompt_template
-        if compute_prompt_template is not None:
-            updates["compute_prompt_template"] = compute_prompt_template
-        if var_generator_init is not None:
-            updates["var_generator_init"] = var_generator_init
-        if steps_ahead is not None:
-            updates["steps_ahead"] = steps_ahead
-        if use_nonce is not None:
-            updates["use_nonce"] = use_nonce
+        # updates = {}
+        # if max_effects is not None:
+        #     updates["max_effects"] = max_effects
+        # if prompt_template is not None:
+        #     updates["prompt_template"] = prompt_template
+        # if compute_prompt_template is not None:
+        #     updates["compute_prompt_template"] = compute_prompt_template
+        # if var_generator_init is not None:
+        #     updates["var_generator_init"] = var_generator_init
+        # if steps_ahead is not None:
+        #     updates["steps_ahead"] = steps_ahead
+        # if use_nonce is not None:
+        #     updates["use_nonce"] = use_nonce
 
-        if not updates:
-            return self.model_copy()
-
-        return self.model_copy(update={"interpreter_config": self.interpreter_config.model_copy(update=updates)})
+        return self.model_copy(update={"interpreter_config": self.interpreter_config.model_copy(update=kwargs)})
 
     def with_compiler_updates(
         self,
@@ -158,17 +158,21 @@ class Config(BaseModel):
 
         return self.model_copy(update={"compiler_config": self.compiler_config.model_copy(update=updates)})
 
-    def with_llm_updates(self, model: Optional[str] = None, **kwargs) -> "Config":
+    def with_llm_updates(self, **kwargs) -> "Config":
         """Create a copy of this config with updated LLM settings."""
-        updates = {}
-        if model is not None:
-            updates["model"] = model
-        updates.update(kwargs)
 
-        if not updates:
+        if not kwargs:
             return self.model_copy()
 
-        return self.model_copy(update={"llm_config": self.llm_config.model_copy(update=updates)})
+        return self.model_copy(update={"llm_config": self.llm_config.model_copy(update=kwargs)})
+
+    def with_compute_llm_updates(self, **kwargs) -> "Config":
+        """Create a copy of this config with updated LLM settings."""
+
+        if not kwargs:
+            return self.model_copy()
+
+        return self.model_copy(update={"compute_llm_config": self.compute_llm_config.model_copy(update=kwargs)})
 
 
 INTERPRETER_BASE_NOREG_JSON_CONFIG = Config(
@@ -245,6 +249,7 @@ INTERPRETER_PYTHON_NESTED_JSON_CONFIG = Config(
         prompt_template=INTERPRETER_PYTHON_NESTED_V0_PROMPT,
         eager_load=False,
         show_effect_count=False,
+        max_effects=30,
     ),
     use_functions=True,
     llm_config=LLMConfig(
@@ -303,4 +308,20 @@ COMPILER_PYTHON_JSON_CONFIG = Config(
     ),
 )
 
-DEFAULT_CONFIG: Config = INTERPRETER_PYTHON_EAGER_CACHE_JSON_CONFIG
+DEFAULT_CONFIG: Config = INTERPRETER_PYTHON_CACHE_JSON_CONFIG
+
+__all__ = [
+    "LLMConfig",
+    "ExecutionSubstrate",
+    "ExecutionStrategy",
+    "CompilerConfig",
+    "InterpreterConfig",
+    "Config",
+    "INTERPRETER_BASE_NOREG_JSON_CONFIG",
+    "INTERPRETER_PYTHON_JSON_CONFIG",
+    "INTERPRETER_PYTHON_CACHE_JSON_CONFIG",
+    "INTERPRETER_PYTHON_EAGER_CACHE_JSON_CONFIG",
+    "INTERPRETER_PYTHON_NESTED_JSON_CONFIG",
+    "COMPILER_PYTHON_JSON_CONFIG",
+    "DEFAULT_CONFIG",
+]

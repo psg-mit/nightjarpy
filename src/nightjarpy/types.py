@@ -139,10 +139,11 @@ NaturalCode: TypeAlias = str
 
 
 class EffectException(Exception):
-    def __init__(self, name: str, value: Any):
-        super().__init__(name, value)
+    def __init__(self, name: str, value: Any, outputs: Dict[str, Any]):
+        super().__init__(name, value, outputs)
         self.name = name
         self.value = value
+        self.outputs = outputs
 
 
 # class BreakLoop(EffectException):
@@ -1028,6 +1029,14 @@ class Effect:
                 "parameters": self._parameter_schema(),
                 "strict": True,
             },
+        }
+
+    def to_openai_responses_function(self) -> Dict[str, Any]:
+        return {
+            "type": "function",
+            "name": self.name,
+            "description": self.description,
+            "parameters": self._parameter_schema(),
         }
 
     def to_anthropic_function(self) -> Dict[str, Any]:

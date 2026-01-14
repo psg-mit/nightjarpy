@@ -6,7 +6,7 @@ import logging
 import os
 import textwrap
 import types
-from typing import Callable, ParamSpec, TypeVar, cast, overload
+from typing import Callable, Optional, ParamSpec, TypeVar, cast, overload
 
 import dotenv
 
@@ -46,6 +46,7 @@ def fn(
     func: Callable[P, T],
     *,
     config: Config = DEFAULT_CONFIG,
+    filename: Optional[str] = None,
 ) -> Callable[P, T]: ...
 
 
@@ -53,6 +54,7 @@ def fn(
 def fn(
     *,
     config: Config = DEFAULT_CONFIG,
+    filename: Optional[str] = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 
 
@@ -60,6 +62,7 @@ def fn(
     func: Callable[P, T] | None = None,
     *,
     config: Config = DEFAULT_CONFIG,
+    filename: Optional[str] = None,
 ) -> Callable[P, T] | Callable[[Callable[P, T]], Callable[P, T]]:
     """
     Bootstrap function with embedded natural code
@@ -69,6 +72,8 @@ def fn(
         enable_nj_logging()
 
     def wrapper(func: Callable[P, T]) -> Callable[P, T]:
+        nonlocal filename
+
         try:
             source_code = inspect.getsource(func)
         except OSError as e:
@@ -80,7 +85,8 @@ def fn(
         mod = StripDecorator().visit(mod)
         source_code = ast.unparse(mod)
 
-        filename = inspect.getsourcefile(func) or "<nightjar>"
+        if filename is None:
+            filename = inspect.getsourcefile(func) or "<nightjar>"
 
         compiled_source_code = compile_nj(
             source_code=source_code,

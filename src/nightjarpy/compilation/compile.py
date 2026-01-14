@@ -238,6 +238,18 @@ class InterpreterTransform(Compiler):
 
         self.config = self.config.with_interpreter_updates(var_generator_init=self.variable_generator.current_id())
 
+        output_var_assignments = [
+            ast.Assign(
+                targets=[ast.Name(id=var.name, ctx=ast.Store())],
+                value=ast.Subscript(
+                    value=ast.Name(id=output_vars_dict_var, ctx=ast.Load()),
+                    slice=ast.Constant(value=var.name),
+                    ctx=ast.Load(),
+                ),
+            )
+            for var in output_vars
+        ]
+
         valid_labels = set[str](["raise"])
         cases = [
             # Always have raise
@@ -335,19 +347,23 @@ class InterpreterTransform(Compiler):
                     ],
                 ),
             ),
+            *output_var_assignments,
         ]
 
-        # Add variable assignments for output variables
-        compiled_ast += [
+        handler_body: list[ast.stmt] = [
             ast.Assign(
-                targets=[ast.Name(id=var.name, ctx=ast.Store())],
-                value=ast.Subscript(
-                    value=ast.Name(id=output_vars_dict_var, ctx=ast.Load()),
-                    slice=ast.Constant(value=var.name),
-                    ctx=ast.Load(),
+                # output variables dictionary variable name
+                targets=[ast.Name(id=output_vars_dict_var, ctx=ast.Store())],
+                value=ast.Name(id=f"{NJ_VAR_PREFIX}effect_exc.outputs", ctx=ast.Load()),
+            ),
+            *output_var_assignments,
+            ast.Match(
+                subject=ast.Attribute(
+                    value=ast.Name(f"{NJ_VAR_PREFIX}effect_exc", ctx=ast.Load()),
+                    attr="name",
                 ),
-            )
-            for var in output_vars
+                cases=cases,
+            ),
         ]
 
         # Wrap in a try block
@@ -360,15 +376,7 @@ class InterpreterTransform(Compiler):
                         attr=EffectException.__qualname__,
                     ),
                     name=f"{NJ_VAR_PREFIX}effect_exc",
-                    body=[
-                        ast.Match(
-                            subject=ast.Attribute(
-                                value=ast.Name(f"{NJ_VAR_PREFIX}effect_exc", ctx=ast.Load()),
-                                attr="name",
-                            ),
-                            cases=cases,
-                        )
-                    ],
+                    body=handler_body,
                 ),
             ],
             orelse=[],

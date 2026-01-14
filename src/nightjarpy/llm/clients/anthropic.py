@@ -416,7 +416,7 @@ class Anthropic(LLM):
         self.n_tool_calls = n_tool_calls  # type: ignore[attr-defined]
 
         NJ_TELEMETRY.n_tool_calls += n_tool_calls
-        NJ_TELEMETRY.log_messages(tool_trace)
+        NJ_TELEMETRY.log_messages(filename="test", funcname="test", messages=tool_trace)
 
         if output_text is None:
             return None

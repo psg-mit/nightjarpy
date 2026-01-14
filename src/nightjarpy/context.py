@@ -1,5 +1,6 @@
 import inspect
 import logging
+import sys
 import types
 from abc import update_abstractmethods
 from datetime import datetime
@@ -146,6 +147,8 @@ class Context:
         config: Config,
         compute_prompt_template: Optional[PromptTemplate],
         use_functions: bool,
+        filename: str,
+        funcname: str,
     ):
         self.rng = np.random.default_rng(seed=42)
         frame = Frame(parent_fp=None)
@@ -165,8 +168,10 @@ class Context:
         self.llm = create_llm(config.llm_config)
         self.config = config
         self.compute_prompt_template = compute_prompt_template
-        self.forbidden = set([property, object])
+        self.forbidden = set([property, object, BaseModel])
         self.use_functions = use_functions
+        self.filename = filename
+        self.funcname = funcname
 
     def reset(self):
         frame = Frame(parent_fp=None)
@@ -267,285 +272,297 @@ class Context:
     def encode_python_value(self, val: Any, enc_memo: Dict[int, Immutable]) -> Immutable:
 
         def _inner(val: Any) -> Immutable:
-            if id(val) in enc_memo:
-                return enc_memo[id(val)]
-            if isinstance(val, tuple):
-                enc = tuple([_inner(x) for x in val])
-                enc_memo[id(val)] = enc
-                return enc
-            elif isinstance(val, (Primitive, datetime)):
-                enc_memo[id(val)] = val
-                return val
-            elif isinstance(val, list):
-                enc_list = []
-                list_ref = self.new_ref()
-                # Placeholder so this ref doesn't get stolen
-                self.heap.insert(list_ref, None)
-                # This goes before recursion to avoid infinite recursion
-                enc_memo[id(val)] = list_ref
+            try:
+                if id(val) in enc_memo:
+                    return enc_memo[id(val)]
+                if isinstance(val, tuple):
+                    enc = tuple([_inner(x) for x in val])
+                    enc_memo[id(val)] = enc
+                    return enc
+                elif isinstance(val, (Primitive, datetime)):
+                    enc_memo[id(val)] = val
+                    return val
+                elif isinstance(val, list):
+                    enc_list = []
+                    list_ref = self.new_ref()
+                    # Placeholder so this ref doesn't get stolen
+                    self.heap.insert(list_ref, None)
+                    # This goes before recursion to avoid infinite recursion
+                    enc_memo[id(val)] = list_ref
 
-                for x in val:
-                    if id(val) == id(x):
-                        # Don't recurse on self
-                        continue
-                    enc_x = _inner(x)
-                    enc_list.append(enc_x)
+                    for x in val:
+                        if id(val) == id(x):
+                            # Don't recurse on self
+                            continue
+                        enc_x = _inner(x)
+                        enc_list.append(enc_x)
 
-                self.heap.insert(list_ref, enc_list)
-                # Maintain pointer to original list so that we can sync the changes when exiting natural env
-                self.orig_py_obj[list_ref] = val
+                    self.heap.insert(list_ref, enc_list)
+                    # Maintain pointer to original list so that we can sync the changes when exiting natural env
+                    self.orig_py_obj[list_ref] = val
 
-                return list_ref
-            elif isinstance(val, dict):
-                enc_dict = {}
-                dict_ref = self.new_ref()
-                # Placeholder so this ref doesn't get stolen
-                self.heap.insert(dict_ref, None)
-                # This goes before recursion to avoid infinite recursion
-                enc_memo[id(val)] = dict_ref
+                    return list_ref
+                elif isinstance(val, dict):
+                    enc_dict = {}
+                    dict_ref = self.new_ref()
+                    # Placeholder so this ref doesn't get stolen
+                    self.heap.insert(dict_ref, None)
+                    # This goes before recursion to avoid infinite recursion
+                    enc_memo[id(val)] = dict_ref
 
-                for k, v in sorted(val.items(), key=lambda x: str(x[0])):
-                    if not isinstance(k, (Primitive, tuple, NotSupportedDataType)):
-                        # logger.warning(f"Dictionary keys must be an immutable type for now... skipping")
-                        continue
-                        # raise NotImplementedError(f"Dictionary keys must be an immutable type for now")
+                    for k, v in sorted(val.items(), key=lambda x: str(x[0])):
+                        if not isinstance(k, (Primitive, tuple, NotSupportedDataType)):
+                            # logger.warning(f"Dictionary keys must be an immutable type for now... skipping")
+                            continue
+                            # raise NotImplementedError(f"Dictionary keys must be an immutable type for now")
 
-                    if id(val) == id(v):
-                        # Don't recurse on self
-                        continue
+                        if id(val) == id(v):
+                            # Don't recurse on self
+                            continue
 
-                    enc_v = _inner(v)
-                    # ref = self.new_ref()
-                    # self.heap.insert(ref, enc_v)
-                    enc_dict[k] = enc_v
+                        enc_v = _inner(v)
+                        # ref = self.new_ref()
+                        # self.heap.insert(ref, enc_v)
+                        enc_dict[k] = enc_v
 
-                self.heap.insert(dict_ref, enc_dict)
-                # Maintain pointer to original dict so that we can sync the changes when exiting natural env
-                self.orig_py_obj[dict_ref] = val
+                    self.heap.insert(dict_ref, enc_dict)
+                    # Maintain pointer to original dict so that we can sync the changes when exiting natural env
+                    self.orig_py_obj[dict_ref] = val
 
-                return dict_ref
-            elif isinstance(val, set):
-                enc_set = set()
-                set_ref = self.new_ref()
-                # Placeholder so this ref doesn't get stolen
-                self.heap.insert(set_ref, None)
-                # This goes before recursion to avoid infinite recursion
-                enc_memo[id(val)] = set_ref
-                for x in sorted(val, key=lambda x: str(x)):
-                    if id(val) == id(x):
-                        # Don't recurse on self
-                        continue
-                    enc_x = _inner(x)
+                    return dict_ref
+                elif isinstance(val, set):
+                    enc_set = set()
+                    set_ref = self.new_ref()
+                    # Placeholder so this ref doesn't get stolen
+                    self.heap.insert(set_ref, None)
+                    # This goes before recursion to avoid infinite recursion
+                    enc_memo[id(val)] = set_ref
+                    for x in sorted(val, key=lambda x: str(x)):
+                        if id(val) == id(x):
+                            # Don't recurse on self
+                            continue
+                        enc_x = _inner(x)
 
-                    enc_set.add(enc_x)
-                self.heap.insert(set_ref, enc_set)
-                # Maintain pointer to original set so that we can sync the changes when exiting natural env
-                self.orig_py_obj[set_ref] = val
+                        enc_set.add(enc_x)
+                    self.heap.insert(set_ref, enc_set)
+                    # Maintain pointer to original set so that we can sync the changes when exiting natural env
+                    self.orig_py_obj[set_ref] = val
 
-                return set_ref
-            elif is_function(val):
+                    return set_ref
+                elif is_function(val):
 
-                try:
-                    parameters = list(inspect.signature(val).parameters.values())
-                except:
-                    parameters = []
+                    try:
+                        parameters = list(inspect.signature(val).parameters.values())
+                    except:
+                        parameters = []
 
-                if isinstance(val, types.MethodType):
-                    parameters = [
-                        inspect.Parameter(
-                            name="self",
-                            kind=inspect.Parameter.POSITIONAL_ONLY,
-                            default=inspect.Parameter.empty,
+                    if isinstance(val, types.MethodType):
+                        parameters = [
+                            inspect.Parameter(
+                                name="self",
+                                kind=inspect.Parameter.POSITIONAL_ONLY,
+                                default=inspect.Parameter.empty,
+                            )
+                        ] + parameters
+
+                    try:
+                        full_func = inspect.getsource(val)
+                    except OSError:
+                        full_func = ""
+                    except TypeError:
+                        full_func = ""
+
+                    func_ref = self.new_ref()
+
+                    self.heap.insert(func_ref, None)
+                    enc_memo[id(val)] = func_ref
+
+                    if not self.use_functions:
+                        func = NotSupportedDataType()
+                    else:
+                        func = Func(
+                            context=self,
+                            name=val.__name__,
+                            signature=self.encode_signature(parameters, enc_memo),
+                            full_func=full_func,
+                            python_func=val,
                         )
-                    ] + parameters
 
-                try:
-                    full_func = inspect.getsource(val)
-                except OSError:
-                    full_func = ""
-                except TypeError:
-                    full_func = ""
+                    self.heap.insert(func_ref, func)
+                    self.orig_py_obj[func_ref] = val
 
-                func_ref = self.new_ref()
+                    return func_ref
+                # elif inspect.ismodule(val):
 
-                self.heap.insert(func_ref, None)
-                enc_memo[id(val)] = func_ref
+                elif isinstance(val, type):
+                    enc_attributes: Dict[str, Immutable] = {}
+                    obj_ref = self.new_ref()
+                    # Placeholder so this ref doesn't get stolen
+                    self.heap.insert(obj_ref, None)
+                    # This goes before recursion to avoid infinite recursion
+                    enc_memo[id(val)] = obj_ref
+                    for k in sorted(get_object_attributes(val)):
+                        if not isinstance(k, str):
+                            raise ValueError("Key of object attributes must be string")
+                        if k.startswith("__"):
+                            # Convention: underdscore means private, so skip
+                            continue
+                        try:
+                            v = getattr(val, k)
+                        except AttributeError:
+                            # logger.warning(f"Attribute `{k}` cannot be retrieved... skipped")
+                            continue
 
-                if not self.use_functions:
-                    func = NotSupportedDataType()
-                else:
-                    func = Func(
-                        context=self,
-                        name=val.__name__,
-                        signature=self.encode_signature(parameters, enc_memo),
-                        full_func=full_func,
-                        python_func=val,
+                        try:
+                            if any(v.__qualname__.startswith(f.__qualname__) for f in self.forbidden):
+                                # skip methods of forbidden classes
+                                continue
+                        except (AttributeError, TypeError):
+                            pass
+
+                        if id(val) == id(v):
+                            # Don't recurse on self
+                            continue
+
+                        enc_v = _inner(v)
+                        # ref = self.new_ref()
+                        # self.heap.insert(ref, enc_v)
+                        enc_attributes[k] = enc_v
+
+                    enc_annotations: Dict[str, str] = {}
+                    if getattr(val, "__annotations__", None) is not None:
+                        # Helper to check if a type is a primitive
+                        def is_primitive_type(t: Any) -> bool:
+                            """Check if a type is one of the primitive types."""
+                            return t in (types.NoneType, str, int, float, bool, Ref, datetime)
+
+                        # Helper to extract non-primitive classes from a type
+                        def extract_classes_from_type(t: Any) -> None:
+                            """Recursively extract non-primitive classes from a type and add to self.classes."""
+                            if t is None:
+                                return
+
+                            # Check if it's a primitive type
+                            if is_primitive_type(t):
+                                return
+
+                            # Get the origin for generic types (List, Dict, Optional, Union, etc.)
+                            origin = get_origin(t)
+                            if origin is not None:
+                                # For generic types, check all args
+                                args = get_args(t)
+                                for arg in args:
+                                    extract_classes_from_type(arg)
+                                return
+
+                            # If it's a user-defined class (type), add it
+                            if isinstance(t, type) and not t in self.forbidden:
+                                qualname = getattr(t, "__qualname__", None)
+                                if qualname:
+                                    qualname = qualname.replace("<run_path>.", "")
+                                    if qualname not in self.classes:
+                                        self.classes[qualname] = t
+                                    # if t not in self.forbidden:
+                                    #     self.valid_vars.add(Variable(qualname))
+                                return
+
+                            # For other types (like typing aliases), try to get the underlying type
+                            if hasattr(t, "__origin__"):
+                                extract_classes_from_type(t.__origin__)  # type: ignore
+                            if hasattr(t, "__args__"):
+                                for arg in t.__args__:  # type: ignore
+                                    extract_classes_from_type(arg)
+
+                        for k, v in val.__annotations__.items():
+                            enc_annotations[k] = type_to_string(v)
+                            # Extract and register non-primitive classes from type annotations
+                            extract_classes_from_type(v)
+
+                    enc_bases: List[Ref] = []
+                    for b in val.__bases__:
+                        enc_b = _inner(b)
+                        if not isinstance(enc_b, Ref):
+                            raise ValueError("One of the baseclasses is not a class")
+                        enc_bases.append(enc_b)
+
+                    self.heap.insert(
+                        obj_ref,
+                        Class(
+                            name=val.__qualname__.replace("<run_path>.", ""),
+                            bases=tuple(enc_bases),
+                            attributes=enc_attributes,
+                            annotations=enc_annotations,
+                        ),
                     )
+                    self.orig_py_obj[obj_ref] = val
+                    self.classes[val.__qualname__.replace("<run_path>.", "")] = val
+                    # if val not in self.forbidden:
+                    #     self.valid_vars.add(Variable(val.__qualname__))
 
-                self.heap.insert(func_ref, func)
-                self.orig_py_obj[func_ref] = val
+                    return obj_ref
 
-                return func_ref
-            # elif inspect.ismodule(val):
-
-            elif isinstance(val, type):
-                enc_attributes: Dict[str, Immutable] = {}
-                obj_ref = self.new_ref()
-                # Placeholder so this ref doesn't get stolen
-                self.heap.insert(obj_ref, None)
-                # This goes before recursion to avoid infinite recursion
-                enc_memo[id(val)] = obj_ref
-                for k in sorted(get_object_attributes(val)):
-                    if not isinstance(k, str):
-                        raise ValueError("Key of object attributes must be string")
-                    if k.startswith("__"):
-                        # Convention: underdscore means private, so skip
-                        continue
-                    try:
-                        v = getattr(val, k)
-                    except AttributeError:
-                        # logger.warning(f"Attribute `{k}` cannot be retrieved... skipped")
-                        continue
-
-                    try:
-                        if any(v.__qualname__.startswith(f.__qualname__) for f in self.forbidden):
-                            # skip methods of forbidden classes
+                elif isinstance(val, object):
+                    enc_obj_dict: Dict[str, Immutable] = {}
+                    obj_ref = self.new_ref()
+                    # Placeholder so this ref doesn't get stolen
+                    self.heap.insert(obj_ref, None)
+                    # This goes before recursion to avoid infinite recursion
+                    enc_memo[id(val)] = obj_ref
+                    for k in sorted(get_object_attributes(val)):
+                        if not isinstance(k, str):
+                            raise ValueError("Key of object attributes must be string")
+                        if k.startswith("__"):
+                            # Convention: underdscore means private, so skip
                             continue
-                    except (AttributeError, TypeError):
-                        pass
-
-                    if id(val) == id(v):
-                        # Don't recurse on self
-                        continue
-
-                    enc_v = _inner(v)
-                    # ref = self.new_ref()
-                    # self.heap.insert(ref, enc_v)
-                    enc_attributes[k] = enc_v
-
-                enc_annotations: Dict[str, str] = {}
-                if getattr(val, "__annotations__", None) is not None:
-                    # Helper to check if a type is a primitive
-                    def is_primitive_type(t: Any) -> bool:
-                        """Check if a type is one of the primitive types."""
-                        return t in (types.NoneType, str, int, float, bool, Ref, datetime)
-
-                    # Helper to extract non-primitive classes from a type
-                    def extract_classes_from_type(t: Any) -> None:
-                        """Recursively extract non-primitive classes from a type and add to self.classes."""
-                        if t is None:
-                            return
-
-                        # Check if it's a primitive type
-                        if is_primitive_type(t):
-                            return
-
-                        # Get the origin for generic types (List, Dict, Optional, Union, etc.)
-                        origin = get_origin(t)
-                        if origin is not None:
-                            # For generic types, check all args
-                            args = get_args(t)
-                            for arg in args:
-                                extract_classes_from_type(arg)
-                            return
-
-                        # If it's a user-defined class (type), add it
-                        if isinstance(t, type) and not t in self.forbidden:
-                            qualname = getattr(t, "__qualname__", None)
-                            if qualname:
-                                qualname = qualname.replace("<run_path>.", "")
-                                if qualname not in self.classes:
-                                    self.classes[qualname] = t
-                                # if t not in self.forbidden:
-                                #     self.valid_vars.add(Variable(qualname))
-                            return
-
-                        # For other types (like typing aliases), try to get the underlying type
-                        if hasattr(t, "__origin__"):
-                            extract_classes_from_type(t.__origin__)  # type: ignore
-                        if hasattr(t, "__args__"):
-                            for arg in t.__args__:  # type: ignore
-                                extract_classes_from_type(arg)
-
-                    for k, v in val.__annotations__.items():
-                        enc_annotations[k] = type_to_string(v)
-                        # Extract and register non-primitive classes from type annotations
-                        extract_classes_from_type(v)
-
-                enc_bases: List[Ref] = []
-                for b in val.__bases__:
-                    enc_b = _inner(b)
-                    if not isinstance(enc_b, Ref):
-                        raise ValueError("One of the baseclasses is not a class")
-                    enc_bases.append(enc_b)
-
-                self.heap.insert(
-                    obj_ref,
-                    Class(
-                        name=val.__qualname__.replace("<run_path>.", ""),
-                        bases=tuple(enc_bases),
-                        attributes=enc_attributes,
-                        annotations=enc_annotations,
-                    ),
-                )
-                self.orig_py_obj[obj_ref] = val
-                self.classes[val.__qualname__.replace("<run_path>.", "")] = val
-                # if val not in self.forbidden:
-                #     self.valid_vars.add(Variable(val.__qualname__))
-
-                return obj_ref
-
-            elif isinstance(val, object):
-                enc_obj_dict: Dict[str, Immutable] = {}
-                obj_ref = self.new_ref()
-                # Placeholder so this ref doesn't get stolen
-                self.heap.insert(obj_ref, None)
-                # This goes before recursion to avoid infinite recursion
-                enc_memo[id(val)] = obj_ref
-                for k in sorted(get_object_attributes(val)):
-                    if not isinstance(k, str):
-                        raise ValueError("Key of object attributes must be string")
-                    if k.startswith("__"):
-                        # Convention: underdscore means private, so skip
-                        continue
-                    try:
-                        v = getattr(val, k)
-                    except AttributeError:
-                        logger.warning(f"Attribute `{k}` cannot be retrieved... skipped")
-                        continue
-
-                    try:
-                        if any(v.__qualname__.startswith(f.__qualname__) for f in self.forbidden):
-                            # skip methods of forbidden classes
+                        try:
+                            v = getattr(val, k)
+                        except AttributeError:
+                            logger.warning(f"Attribute `{k}` cannot be retrieved... skipped")
                             continue
-                    except (AttributeError, TypeError):
-                        pass
 
-                    if id(val) == id(v):
-                        # Don't recurse on self
-                        continue
+                        try:
+                            if any(v.__qualname__.startswith(f.__qualname__) for f in self.forbidden):
+                                # skip methods of forbidden classes
+                                continue
+                        except (AttributeError, TypeError):
+                            pass
 
-                    enc_v = _inner(v)
-                    # ref = self.new_ref()
-                    # self.heap.insert(ref, enc_v)
-                    enc_obj_dict[k] = enc_v
+                        if id(val) == id(v):
+                            # Don't recurse on self
+                            continue
 
-                self.heap.insert(
-                    obj_ref,
-                    Object(_class=val.__class__.__qualname__.replace("<run_path>.", ""), attributes=enc_obj_dict),
-                )
-                self.orig_py_obj[obj_ref] = val
-                self.classes[val.__class__.__qualname__.replace("<run_path>.", "")] = val.__class__
-                # if val.__class__ not in self.forbidden:
-                #     self.valid_vars.add(Variable(val.__class__.__qualname__))
+                        # TODO: Bug where this function might infinitely recurse if v is a property that
+                        # creates a new object that contains a property that creates a new object.
+                        # Need to properly address by lazily encoding mutable attributes
 
-                return obj_ref
-            else:
-                raise ValueError("Unsupported data type")
+                        enc_v = _inner(v)
+                        # ref = self.new_ref()
+                        # self.heap.insert(ref, enc_v)
+                        enc_obj_dict[k] = enc_v
+
+                    self.heap.insert(
+                        obj_ref,
+                        Object(_class=val.__class__.__qualname__.replace("<run_path>.", ""), attributes=enc_obj_dict),
+                    )
+                    self.orig_py_obj[obj_ref] = val
+                    self.classes[val.__class__.__qualname__.replace("<run_path>.", "")] = val.__class__
+                    # if val.__class__ not in self.forbidden:
+                    #     self.valid_vars.add(Variable(val.__class__.__qualname__))
+
+                    return obj_ref
+                else:
+                    raise ValueError("Unsupported data type")
+            except Exception as e:
+                logger.error(f"Encountered error while encoding Python value: {val}")
+                raise e
 
         return _inner(val)
 
     def decode_and_sync_python_value(self, val: Immutable, dec_memo: Dict[Ref, Any]) -> Any:
+        if val in self.orig_py_obj:
+            orig = self.orig_py_obj[val]
+            if hasattr(orig, "__module__") and getattr(orig, "__module__") in sys.stdlib_module_names:
+                return orig
 
         def _inner(val: Immutable) -> Any:
 
@@ -737,13 +754,17 @@ class Context:
                                 if "self" in inspect.signature(v).parameters:
                                     v = types.MethodType(v, _cls)
 
-                            # _cls.__dict__[k] = v
                             setattr(_cls, k, v)
                         except (TypeError, AttributeError, ValueError):
                             # logger.warning(f"Attribute `{k}` could not be updated... skipped")
                             continue
 
-                    update_abstractmethods(_cls)
+                    try:
+                        update_abstractmethods(_cls)
+                    except RuntimeError:
+                        # Catch "dictionary changed size during iteration" error
+                        # This can happen if the class is being modified during iteration
+                        pass
 
                     deletion = []
                     if getattr(_cls, "__annotations__", None) is not None:
@@ -1151,6 +1172,31 @@ class Context:
         val = self.loadreg(valreg)
         return self.setref(ref, val)
 
+    def collect_outputs(self) -> Dict[str, Any]:
+        outputs: Dict[str, Any] = {}
+        for var in self.output_vars:
+            key = var.name
+            try:
+                val = self.lookup(var, local_only=True)
+                outputs[key] = self.decode_and_sync_python_value(val, {})
+            except UndefinedLocal:
+                try:
+                    val = self.lookup(var, local_only=False)
+                    outputs[key] = self.decode_and_sync_python_value(val, {})
+                    if self.python_frame:
+                        self.python_frame.f_globals[key] = outputs[key]
+                    else:
+                        raise ValueError(f"Can't find calling Python frame")
+                except ValueError:
+                    raise ValueError(
+                        f"Cannot exit agent loop; output variable is not defined `{key}`. Define `{key}` before try `done` again."
+                    )
+                except Exception as e:
+                    raise e
+            except Exception as e:
+                raise ValueError(f"Output variable `{key}` is ill-defined. Please fix before exiting: {e}")
+        return outputs
+
     # Goto is implemented using exception handling
     # This function raises a specialized exception with the label name
     # The program is assumed to have wrapped the natural code with a try-except block
@@ -1164,7 +1210,9 @@ class Context:
 
         dec_value = self.decode_and_sync_python_value(value, {})
 
-        raise EffectException(name=label.name, value=dec_value)
+        outputs = self.collect_outputs()
+
+        raise EffectException(name=label.name, value=dec_value, outputs=outputs)
 
     def goto_reg(self, label: Label, valreg: RegName) -> NoReturn:
         val = self.loadreg(valreg)
