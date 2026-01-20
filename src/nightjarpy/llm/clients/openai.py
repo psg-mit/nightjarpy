@@ -101,8 +101,8 @@ class OpenAI(LLM):
             "parallel_tool_calls": parallel_tool_calls or self.config.parallel_tool_calls,
         }
 
-        if self.config.model in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
-            request_params["reasoning_effor"] = self.config.reasoning_effort
+        if request_params["model"] in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
+            request_params["reasoning_effort"] = self.config.reasoning_effort
             request_params["verbosity"] = self.config.verbosity
 
         # Add system prompt
@@ -197,7 +197,7 @@ class OpenAI(LLM):
             # request_params["tools"] = [openai_schema_to_function_schema(schema)]
             # request_params["tool_choice"] = {"type": "function", "function": {"name": schema.name}}
 
-        if self.config.model in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
+        if request_params["model"] in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]:
             request_params["reasoning_effort"] = self.config.reasoning_effort
             request_params["verbosity"] = self.config.verbosity
 
@@ -385,7 +385,7 @@ class OpenAI(LLM):
         self.n_tool_calls = n_tool_calls
 
         NJ_TELEMETRY.n_tool_calls += n_tool_calls
-        NJ_TELEMETRY.log_messages(tool_trace)
+        NJ_TELEMETRY.log_messages(filename="test", funcname="test", messages=tool_trace)
 
         if schema is not None:
             output = schema.parse(res.output_text)

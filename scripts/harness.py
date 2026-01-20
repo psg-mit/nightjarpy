@@ -136,7 +136,7 @@ class TraceEntry(BaseModel):
     file_name: str
     model: str
     run: int  # Run number
-    trace: List[ChatMessage]
+    trace: Dict[str, List[ChatMessage]]
 
 
 class TestResult(BaseModel):
@@ -154,7 +154,7 @@ class TestResult(BaseModel):
 def save_trace(result: TraceEntry, output_file: str):
     """Save a single result to the output file in JSONL format."""
     trace_data = result.model_dump()
-    trace_data["trace"] = [x.model_dump() for x in result.trace]
+    trace_data["trace"] = {k: [x.model_dump() for x in v] for k, v in result.trace.items()}
     tqdm.write(f"saving trace...")
 
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -365,7 +365,7 @@ def run_program(args) -> Tuple[TestResult, TraceEntry]:
             file_name=program_name,
             model=opts.model,
             run=run_index,
-            trace=[],
+            trace={},
         )
         return result, entry
 
@@ -391,7 +391,7 @@ def run_program(args) -> Tuple[TestResult, TraceEntry]:
             file_name=program_name,
             model=opts.model,
             run=run_index,
-            trace=[],
+            trace={},
         )
         return result, entry
 
@@ -449,13 +449,13 @@ def run_program(args) -> Tuple[TestResult, TraceEntry]:
             file_name=program_name,
             model=opts.model,
             run=run_index,
-            trace=[],
+            trace={},
         )
         return result, entry
 
     runtime_usage = NJ_TELEMETRY.total_llm_usage()
     n_tool_calls = NJ_TELEMETRY.n_tool_calls
-    traces = deepcopy(NJ_TELEMETRY.trace) or []
+    traces = deepcopy(NJ_TELEMETRY.trace) or {}
     NJ_TELEMETRY.reset()
 
     entry = TraceEntry(
@@ -581,7 +581,7 @@ def main(opts: Options):
                     file_name=program_name,
                     model=opts.model,
                     run=run_index,
-                    trace=[],
+                    trace={},
                 )
 
             # Save result immediately

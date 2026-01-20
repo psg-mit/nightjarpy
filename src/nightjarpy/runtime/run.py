@@ -6,6 +6,7 @@ import random
 import textwrap
 import time
 import types
+from concurrent.futures import ProcessPoolExecutor
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar, cast
 
 import dotenv
@@ -21,8 +22,7 @@ from nightjarpy.configs import (
     LLMConfig,
 )
 from nightjarpy.context import Context
-from nightjarpy.effects import Done, Effect
-from nightjarpy.llm.factory import create_llm
+from nightjarpy.effects import Done, Effect, get_effect_set
 from nightjarpy.types import (
     SUCCESS,
     AssistantMessage,
@@ -44,19 +44,17 @@ from nightjarpy.types import (
 from nightjarpy.utils import (
     NJ_TELEMETRY,
     LLMUsage,
+    create_llm,
     deserialize_json,
     enable_nj_logging,
+    extract_effects,
     extract_label,
     extract_variable,
+    parallelize_effects,
     parse_effect,
     serialize,
-    serialize_json,
-)
-from nightjarpy.utils.utils import (
-    MAX_SERIALIZE_LEN,
-    extract_effects,
-    parallelize_effects,
     serialize_effect,
+    serialize_json,
     validate_args,
     validate_kwargs,
 )
@@ -74,12 +72,16 @@ def _log_telemetry_and_trace(
     handled_effects_results: List[ToolMessage],
     effect_gen_time: float,
     usage: Optional[LLMUsage],
+    funcname: str,
+    filename: str,
     log_trace: bool = True,
 ) -> None:
     """Log telemetry messages and optionally dump trace."""
     handled_effects = [x for x in all_emitted_effects if x.id in handled_effect_ids]
     discarded_effects = [x for x in all_emitted_effects if x.id not in handled_effect_ids]
     NJ_TELEMETRY.log_messages(
+        filename,
+        funcname,
         [
             AssistantMessage(
                 tool_calls=handled_effects,
@@ -89,10 +91,10 @@ def _log_telemetry_and_trace(
                 usage=usage,
             )
         ]
-        + handled_effects_results
+        + handled_effects_results,
     )
     if log_trace and TRACE_PATH:
-        NJ_TELEMETRY.dump_trace(TRACE_PATH)
+        NJ_TELEMETRY.dump_trace(filename, funcname, TRACE_PATH)
 
 
 def _handle_effect(
@@ -187,16 +189,10 @@ def execute(
         system_prompt_kwargs["max_tool_calls"] = interpreter_config.max_effects
     if "{steps_ahead}" in system_prompt_template:
         system_prompt_kwargs["steps_ahead"] = interpreter_config.steps_ahead
+    if "{max_serialize_len}" in system_prompt_template:
+        system_prompt_kwargs["max_serialize_len"] = interpreter_config.max_serialize_len
 
     filled_in_system_prompt = interpreter_config.prompt_template.system.format(**system_prompt_kwargs)
-
-    effect_set = ExecutionSubstrate.get_effect_set(interpreter_config.execution_substrate)
-
-    effect_set.set_use_functions(config.use_functions)
-
-    serialize_fun = serialize_json if config.llm_config.json_structured_output else serialize
-
-    effect_mapping: Dict[str, Effect] = {e.name: e for e in effect_set.effects}
 
     natural_code = textwrap.dedent(natural_code).strip()
     output_vars, input_vars = extract_variable(natural_code)
@@ -216,14 +212,29 @@ def execute(
         output_vars=set(output_vars.keys()),
         valid_labels=set(valid_labels_parsed) if valid_labels_parsed else set(),
         python_frame=python_frame,
-        llm_config=config.llm_config,
+        config=config,
         compute_prompt_template=interpreter_config.compute_prompt_template,
         use_functions=config.use_functions,
+        filename=filename,
+        funcname=funcname,
     )
 
     logger.info(f"input vars: {input_vars}")
     logger.info(f"output vars: {output_vars}")
     logger.info(f"labels: {valid_labels_parsed}")
+
+    effect_set = get_effect_set(interpreter_config.execution_substrate)
+
+    if interpreter_config.execution_substrate == ExecutionSubstrate.PYTHON_NESTED:
+        if context.config.recursion_depth + 1 >= context.config.recursion_limit:
+            # Disable nested natural blocks
+            effect_set = get_effect_set(ExecutionSubstrate.PYTHON_LLM)
+
+    effect_set.set_use_functions(config.use_functions)
+
+    serialize_fun = serialize_json if config.llm_config.json_structured_output else serialize
+
+    effect_mapping: Dict[str, Effect] = {e.name: e for e in effect_set.effects}
 
     # Lookup input vars
     # Eagerly load input vars into context in the current frame in the Context handler
@@ -257,8 +268,8 @@ def execute(
                     val_str = serialize(val)  # type: ignore
                     ty_str = type(val).__qualname__
 
-                    if len(val_str) > MAX_SERIALIZE_LEN:
-                        val_str = val_str[:MAX_SERIALIZE_LEN] + "[TRUNCATED FOR LENGTH]"
+                    if len(val_str) > interpreter_config.max_serialize_len:
+                        val_str = val_str[: interpreter_config.max_serialize_len] + "[TRUNCATED FOR LENGTH]"
                     val_str = f"Value: {val_str}"
                     eager_load_str += f"{var} [type: {ty_str}]: {val_str}"
                 else:
@@ -269,8 +280,8 @@ def execute(
                     attrs = dir(py_val)
                     attrs = filter(lambda x: not x.startswith("__"), attrs)
                     attrs = str(sorted(list([x for x in attrs])))
-                    if len(attrs) > MAX_SERIALIZE_LEN:
-                        attrs = attrs[:MAX_SERIALIZE_LEN] + "[TRUNCATED FOR LENGTH]"
+                    if len(attrs) > interpreter_config.max_serialize_len:
+                        attrs = attrs[: interpreter_config.max_serialize_len] + "[TRUNCATED FOR LENGTH]"
 
                     eager_load_str += f"{var} [type: {ty_str}]: {val_str}"
                     eager_load_str += f" Attrs: {attrs}"
@@ -297,7 +308,7 @@ def execute(
     logger.info(f"\n======== Natural Code ========\n{content}\n=================")
 
     messages: List[ChatMessage] = [UserMessage(content=content)]
-    NJ_TELEMETRY.log_messages(messages)
+    NJ_TELEMETRY.log_messages(filename, funcname, messages)
     n_effects = 0
     max_iters = interpreter_config.max_iters or interpreter_config.max_effects
 
@@ -307,13 +318,13 @@ def execute(
             logger.info(f"n effects: {NJ_TELEMETRY.n_tool_calls}")
             if NJ_TELEMETRY.n_tool_calls >= interpreter_config.max_effects:
                 if TRACE_PATH:
-                    NJ_TELEMETRY.dump_trace(TRACE_PATH)
+                    NJ_TELEMETRY.dump_trace(filename, funcname, TRACE_PATH)
                 raise TimeoutError(f"Max effects reached: {NJ_TELEMETRY.n_tool_calls}")
         else:
             logger.info(f"n effects: {n_effects}")
             if n_effects >= interpreter_config.max_effects_per_execute:
                 if TRACE_PATH:
-                    NJ_TELEMETRY.dump_trace(TRACE_PATH)
+                    NJ_TELEMETRY.dump_trace(filename, funcname, TRACE_PATH)
                 raise TimeoutError(f"Max effects reached: {n_effects}")
 
         if config.llm_config.json_structured_output:
@@ -387,8 +398,8 @@ def execute(
         )
 
         def _add_response(response: str, tool_id: str, t: float):
-            # if len(response) > MAX_SERIALIZE_LEN:
-            #     response = response[:MAX_SERIALIZE_LEN] + "[TRUNCATED]"
+            if len(response) > interpreter_config.max_serialize_len:
+                response = response[: interpreter_config.max_serialize_len] + "[TRUNCATED]"
 
             if config.llm_config.json_structured_output:
                 handled_effects_results.append(ToolMessage(content=response, tool_call_id=tool_id, time=t))
@@ -469,6 +480,8 @@ def execute(
                         effect_gen_time=effect_gen_time,
                         handled_effects_results=handled_effects_results_log,
                         usage=usage,
+                        filename=filename,
+                        funcname=funcname,
                         log_trace=True,
                     )
                     return error.outputs
@@ -482,6 +495,8 @@ def execute(
                         effect_gen_time=effect_gen_time,
                         handled_effects_results=handled_effects_results_log,
                         usage=usage,
+                        filename=filename,
+                        funcname=funcname,
                         log_trace=True,
                     )
                     raise error
@@ -490,8 +505,12 @@ def execute(
                     logger.info(f"Encountered error {effect_res}... Continuing")
                     encountered_error = True
 
-                logger.info(f"Effect resume with: {effect_res}")
                 res_str = serialize_fun(effect_res)
+
+                effect_res_logging = res_str
+                if len(effect_res_logging) > interpreter_config.max_serialize_len:
+                    effect_res_logging = effect_res_logging[: interpreter_config.max_serialize_len] + "[TRUNCATED]"
+                logger.info(f"Effect resume with: {effect_res_logging}")
 
                 if interpreter_config.show_effect_count:
                     if interpreter_config.max_effects_per_execute is not None:
@@ -524,25 +543,84 @@ def execute(
             handled_effects_results=handled_effects_results_log,
             effect_gen_time=effect_gen_time,
             usage=usage,
+            filename=filename,
+            funcname=funcname,
             log_trace=False,
         )
 
     if TRACE_PATH:
-        NJ_TELEMETRY.dump_trace(TRACE_PATH)
+        NJ_TELEMETRY.dump_trace(filename, funcname, TRACE_PATH)
     raise TimeoutError(f"Max iters reached: {n_iter + 1}")
 
 
 T = TypeVar("T", bound=BaseModel)
 
 
+def single_llm(args) -> Tuple[str | Dict | T, LLMUsage | None]:
+    config, max_calls, code_interpreter, prompt, output_format = args
+    llm_model = create_llm(config)
+    schema = ResponseFormat[Any](output_format) if output_format is not None else None
+
+    if code_interpreter:
+        res = llm_model.gen_code_interpreter(
+            message=prompt,
+            schema=schema,
+            max_tool_calls=max_calls,
+        )
+    else:
+        res = llm_model.gen([UserMessage(content=prompt)], schema=schema)
+    usage = llm_model.get_usage()
+    return res, usage
+
+
 def nj_llm_factory(
-    config: LLMConfig, filename: str, funcname: str, max_calls: Optional[int] = None, code_interpreter: bool = False
+    config: LLMConfig,
+    filename: str,
+    funcname: str,
+    max_calls: Optional[int] = None,
+    code_interpreter: bool = False,
+    batched: bool = False,
 ):
     verbose = os.getenv("NJ_VERBOSE", False)
     if verbose:
         enable_nj_logging()
 
     n_calls = 0
+
+    def nj_llm_batched(
+        prompts: List[str], output_formats: Optional[List[Dict | type[T]]] = None
+    ) -> List[str | Dict | T]:
+        nonlocal n_calls
+
+        if max_calls is not None and n_calls >= max_calls:
+            raise TimeoutError("Max LLM calls reached")
+
+        logger.info(f"LLM call {n_calls}")
+
+        if output_formats is None:
+            output_formats = [None for _ in prompts]
+
+        pool = ProcessPoolExecutor(max_workers=min(len(prompts), 20))
+
+        work = [(config, max_calls, code_interpreter, p, o) for p, o in zip(prompts, output_formats, strict=True)]
+
+        results = pool.map(single_llm, work)
+
+        all_res = []
+        for res, usage in results:
+            if usage is None:
+                logger.warning("No LLM usage to log")
+            else:
+                NJ_TELEMETRY.log_llm_usage(filename, funcname, usage)
+
+            n_calls += 1
+
+            if res is None:
+                raise ValueError("No response from model")
+
+            all_res.append(res)
+
+        return all_res
 
     def nj_llm(prompt: str, output_format: Optional[Dict | type[T]] = None) -> str | Dict | T:
         nonlocal n_calls
@@ -578,4 +656,4 @@ def nj_llm_factory(
 
         return res
 
-    return nj_llm
+    return nj_llm_batched if batched else nj_llm

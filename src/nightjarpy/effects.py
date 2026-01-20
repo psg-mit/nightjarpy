@@ -1,6 +1,7 @@
+import inspect
 import logging
 import re
-import types
+import sys
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -23,6 +24,8 @@ from typing import (
 if TYPE_CHECKING:
     from nightjarpy.context import Context
 
+from nightjarpy.compilation.compile import compile_nj
+from nightjarpy.configs import ExecutionSubstrate
 from nightjarpy.types import (
     SCHEMA,
     SCHEMA_DEFS,
@@ -30,11 +33,14 @@ from nightjarpy.types import (
     SUCCESS,
     VALUE_SCHEMA,
     Done,
+    Effect,
     EffectError,
     EffectParams,
+    EffectSet,
     Immutable,
     Label,
     NaturalCode,
+    Parameter,
     Ref,
     RegName,
     Success,
@@ -44,113 +50,6 @@ from nightjarpy.types import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-class Parameter(NamedTuple):
-    name: str
-    type: type[EffectParams] | types.UnionType
-    access: Optional[Literal["read", "write"]] = None
-
-
-class Effect:
-    name: str
-    description: str
-    # Parameters for the LLM to generate, does not include parameters that must be given by the runtime handler
-    parameters: Sequence[Parameter]
-    schema_def: bool
-    use_functions: bool
-
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        parameters: Sequence[Parameter],
-        handler,
-        schema_def: bool = False,
-        use_functions: bool = False,
-    ):
-        self.name = name
-        self.description = description
-        self.parameters = parameters
-        self.schema_def = schema_def
-        self.handler = handler
-        self.use_functions = use_functions
-
-    def handler(self, context: "Context", *args, **kwargs) -> Any: ...
-
-    def to_schema(self, model_name: str) -> Dict[str, Any]:
-        model = model_name.lower()
-
-        if model.startswith("openai/"):
-            return self.to_openai_function()
-        elif model.startswith("anthropic/"):
-            return self.to_anthropic_function()
-        else:
-            raise ValueError(f"Unsupported model provider: {model}. Supported providers: openai/, anthropic/")
-
-    def _parameter_schema(self) -> Dict[str, Any]:
-        schema = {
-            "type": "object",
-            "properties": {k: SCHEMA[v] for k, v, _ in self.parameters},
-            "required": [p.name for p in self.parameters],
-            "additionalProperties": False,
-        }
-
-        if self.schema_def:
-            schema["$defs"] = SCHEMA_DEFS if self.use_functions else SCHEMA_DEFS_NOFUNC
-
-        return schema
-
-    def to_openai_schema(self) -> Dict[str, Any]:
-        """
-        Returns as an OpenAI structured output schema
-        """
-        schema = {
-            "type": "object",
-            "description": self.description,
-            "properties": {
-                "name": {"enum": [self.name]},
-                "args": self._parameter_schema(),
-            },
-            "additionalProperties": False,
-            "required": ["name", "args"],
-            "strict": True,
-        }
-
-        return schema
-
-    def to_openai_function(self) -> Dict[str, Any]:
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self._parameter_schema(),
-                "strict": True,
-            },
-        }
-
-    def to_anthropic_function(self) -> Dict[str, Any]:
-        """Convert tool to Anthropic's tool format."""
-        return {
-            "name": self.name,
-            "description": self.description,
-            "input_schema": self._parameter_schema(),
-        }
-
-    def __call__(self, context: "Context", *args, **kwargs) -> Any:
-        return self.handler(context, *args, **kwargs)
-
-
-@dataclass(frozen=True)
-class EffectSet:
-    effects: FrozenSet[Effect]
-    final_effects: FrozenSet[str]  # Name of the effects to force as the final effect in a compilation/jit setup
-    disable_compile: FrozenSet[str]  # Name of effects that are disabled during compilation
-
-    def set_use_functions(self, use_functions: bool):
-        for effect in self.effects:
-            effect.use_functions = use_functions
 
 
 def sanitize_code(expr: str) -> str:
@@ -756,12 +655,7 @@ eval_effect = Effect(
 )
 
 
-def exec_handler(context: "Context", code: str) -> Success:
-    code = sanitize_code(code)
-    # Execute the function
-    logger.info(f"Python code:\n{code}")
-
-    python_locals, python_globals = context.get_closure(context.fp)
+def _exec(context: "Context", code: str, python_locals: Dict[str, Any], python_globals: Dict[str, Any]) -> Success:
     full_code = "\n    ".join(code.split("\n"))
     extract = "\n    ".join(
         [f"{k} = nj__locals['{k}']" for k in python_locals.keys() if k is not None and not k.lower().startswith("nj__")]
@@ -791,13 +685,30 @@ def exec_handler(context: "Context", code: str) -> Success:
 
     # Update the locals
     for k, v in new_python_locals.items():
-        if k.startswith("nj_") or k in ["self"]:
+        if k.startswith("nj_") or k in ["self", "nightjarpy"]:
+            continue
+        if inspect.ismodule(v) and v.__name__ in sys.stdlib_module_names:
+            # skip standard libraries
             continue
         ref = context.encode_python_value(v, {})
 
         context.current_frame.insert(Variable(k), ref)
         context.valid_vars.add(Variable(k))
     return SUCCESS
+
+
+def exec_handler(context: "Context", code: str) -> Success:
+    # Execute the function
+    logger.info(f"Python code:\n{code}")
+
+    if len(code.split("\n")) > 15:
+        raise RuntimeError("Block of code cannot be more than 15 lines at a time")
+
+    code = sanitize_code(code)
+
+    python_locals, python_globals = context.get_closure(context.fp)
+
+    return _exec(context, code, python_locals, python_globals)
 
 
 exec_effect = Effect(
@@ -808,27 +719,112 @@ exec_effect = Effect(
 )
 
 
-def done_handler(context: "Context") -> str:
-    outputs: Dict[str, Any] = {}
-    for var in context.output_vars:
-        key = var.name
-        try:
-            val = context.lookup(var, local_only=True)
-            outputs[key] = context.decode_and_sync_python_value(val, {})
-        except UndefinedLocal:
-            try:
-                val = context.lookup(var, local_only=False)
-                outputs[key] = context.decode_and_sync_python_value(val, {})
-                if context.python_frame:
-                    context.python_frame.f_globals[key] = outputs[key]
-                else:
-                    raise ValueError(f"Can't find calling Python frame")
-            except ValueError:
-                return f"Error: Cannot exit agent loop; output variable is not defined `{key}`. Define `{key}` before try `done` again."
-            except Exception as e:
-                raise e
-        except Exception as e:
-            raise ValueError(f"Output variable `{key}` is ill-defined. Please fix before exiting: {e}")
+def exec_nested_handler(context: "Context", code: str) -> Success:
+    # Execute the function
+    logger.info(f"Original code:\n{code}")
+
+    if len(code.split("\n")) > 15:
+        raise RuntimeError("Block of code cannot be more than 15 lines at a time")
+
+    config = context.config.inc_recursion_depth()
+    config = config.model_copy(update={"llm_config": config.compute_llm_config})
+
+    logger.info(f"EXEC recursion depth: {config.recursion_depth}")
+
+    code = compile_nj(
+        source_code=code,
+        config=config,
+        filename=context.filename,
+        funcname=f"{context.funcname}_sub{config.recursion_depth}",
+    )
+
+    logger.info(f"Compiled code:\n{code}")
+
+    python_locals, python_globals = context.get_closure(context.fp)
+
+    return _exec(context, code, python_locals, python_globals)
+
+
+exec_nested_effect = Effect(
+    name="exec",
+    description="""Execute a Python code block in the current context. The Python code may optionally contain natural blocks (which makes LLM calls or Python code evaluation). This tool does not return anything. Issue only 1-10 lines of code at a time. You cannot use `help`. You cannot see `print` statements. Only use <var> or <:var> syntax in the natural blocks. Code must be valid Python code with optional natural blocks. Natural blocks are embedded like so:
+```
+# python code...
+x = 5
+\"\"\"natural
+natural language instruction to do something, can reference Python variables using <x> syntax and write Python variables using <:y> syntax. Python data are passed by reference so updating attributes of <x> is reflected on the Python data x itself
+\"\"\"
+print(y)
+```
+Make sure the natural block starts with `\"\"\"natural` otherwise the parser won't work.
+""",
+    parameters=(Parameter("code", str),),
+    handler=exec_nested_handler,
+)
+
+
+def exec_llm_handler(context: "Context", code: str) -> Success:
+
+    logger.info(f"Python code:\n{code}")
+
+    if len(code.split("\n")) > 15:
+        raise RuntimeError("Block of code cannot be more than 15 lines at a time")
+
+    config = context.config.inc_recursion_depth()
+
+    if config.compute_llm_config is None:
+        llm_config = config.llm_config
+    else:
+        llm_config = config.compute_llm_config
+
+    logger.info(f"EXEC recursion depth: {config.recursion_depth}")
+
+    code = sanitize_code(code)
+
+    python_locals, python_globals = context.get_closure(context.fp)
+
+    from nightjarpy.runtime import nj_llm_factory
+
+    llm_query = nj_llm_factory(
+        config=llm_config,
+        filename=context.filename,
+        funcname=context.funcname,
+    )
+
+    llm_query_batched = nj_llm_factory(
+        config=llm_config,
+        filename=context.filename,
+        funcname=context.funcname,
+        batched=True,
+    )
+
+    python_globals.update(llm_query=llm_query, llm_query_batched=llm_query_batched)
+
+    return _exec(context, code, python_locals, python_globals)
+
+
+exec_llm_effect = Effect(
+    name="exec",
+    description="""Execute a Python code block in the current context. The Python code may optionally contain an LLM call using the `llm_query` function or `llm_query_batched`. `llm_query` takes a string prompt and returns a string response. `llm_query_batched` takes a list of string prompts and returns a list of string responses. This `exec` tool does not return anything. Issue only 1-10 lines of code at a time. You cannot use `help`. You cannot see `print` statements. Code must be valid Python code. For example, say we want to search for the magic number in a string, and the string is very long, so we want to chunk it:
+```
+chunk = context[:2000]
+answer = llm_query(f"What is the magic number in the context? Here is the chunk: {{chunk}}")
+```
+Then we can use `eval("answer")` to look at the result or run another exec call to regex `answer` for a number.
+You also want to use `llm_query_batched` whenever possible (i.e. more than one parallel LLM queries) so your code is fast:
+```
+chunks = [context[:2000], context[2000:4000]]
+prompts = [f"What is the magic number in the context? Here is the chunk: {{chunk}}" for chunk in chunks]
+answers = llm_query_batched(prompts)
+```
+""",
+    parameters=(Parameter("code", str),),
+    handler=exec_llm_handler,
+)
+
+
+def done_handler(context: "Context") -> NoReturn:
+    outputs = context.collect_outputs()
     raise Done(outputs)
 
 
@@ -1027,3 +1023,58 @@ PYTHON_EFFECTS_V1 = EffectSet(
     ),
     disable_compile=frozenset(),
 )
+
+
+PYTHON_NESTED_EFFECTS = EffectSet(
+    effects=frozenset(
+        [
+            eval_effect,
+            exec_nested_effect,
+            raise_var_effect,
+            break_effect,
+            continue_effect,
+            return_var_effect,
+            done_effect,
+        ]
+    ),
+    final_effects=frozenset(
+        [done_effect.name, raise_var_effect.name, break_effect.name, continue_effect.name, return_var_effect.name]
+    ),
+    disable_compile=frozenset(),
+)
+
+PYTHON_LLM_EFFECTS = EffectSet(
+    effects=frozenset(
+        [
+            eval_effect,
+            exec_llm_effect,
+            raise_var_effect,
+            break_effect,
+            continue_effect,
+            return_var_effect,
+            done_effect,
+        ]
+    ),
+    final_effects=frozenset(
+        [done_effect.name, raise_var_effect.name, break_effect.name, continue_effect.name, return_var_effect.name]
+    ),
+    disable_compile=frozenset(),
+)
+
+
+def get_effect_set(substrate: "ExecutionSubstrate") -> EffectSet:
+    if substrate == ExecutionSubstrate.PYTHON:
+        effect_set = PYTHON_EFFECTS_V1
+    elif substrate == ExecutionSubstrate.PYTHON_LLM:
+        effect_set = PYTHON_LLM_EFFECTS
+    elif substrate == ExecutionSubstrate.PYTHON_NESTED:
+        effect_set = PYTHON_NESTED_EFFECTS
+    elif substrate == ExecutionSubstrate.BASE_NOREG:
+        effect_set = BASE_EFFECTS_NOREG
+    elif substrate == ExecutionSubstrate.PYTHON_BASE_ISOLATED_NOREG:
+        effect_set = PYTHON_BASE_ISOLATED_EFFECTS_NOREG
+    elif substrate == ExecutionSubstrate.PYTHON_BASE_NOREG:
+        effect_set = PYTHON_BASE_EFFECTS_NOREG
+    else:
+        raise ValueError(f"Unknown execution substate {substrate}")
+    return effect_set

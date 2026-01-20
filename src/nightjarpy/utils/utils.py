@@ -43,15 +43,18 @@ from pydantic import BaseModel
 from tap.utils import type_to_str
 from typing_inspect import get_args, get_origin
 
+from nightjarpy.configs import LLMConfig
+
 if TYPE_CHECKING:
+    from nightjarpy.llm.base import LLM
     from nightjarpy.context import Context
 
-from nightjarpy.effects import Effect, Parameter
 from nightjarpy.types import (
     NJ_VAR_PREFIX,
     Argument,
     ChatMessage,
     Class,
+    Effect,
     EffectCall,
     EffectError,
     EffectParams,
@@ -65,6 +68,7 @@ from nightjarpy.types import (
     NotSupportedDataType,
     Object,
     Param,
+    Parameter,
     Primitive,
     Ref,
     RegName,
@@ -79,7 +83,6 @@ from nightjarpy.types import (
 from nightjarpy.utils.cache import Cache
 
 NJ_BUILD_DIR = "nj__build"
-MAX_SERIALIZE_LEN = 1000
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +92,12 @@ class Telemetry:
     # Maps `filename.functionname` to LLM usage
     llm_usage: Dict[str, List[LLMUsage]] = field(default_factory=dict)
     n_tool_calls: int = 0
-    trace: Optional[List[ChatMessage]] = None
+    trace: Dict[str, List[ChatMessage]] = field(default_factory=dict)
 
     def reset(self):
         self.llm_usage = {}
         self.n_tool_calls = 0
-        self.trace = None
+        self.trace = {}
 
     def log_llm_usage(self, filename: str, funcname: str, usage: LLMUsage):
         key = f"{filename}.{funcname}"
@@ -109,17 +112,18 @@ class Telemetry:
     def total_llm_usage(self) -> LLMUsage:
         return sum_usage([sum_usage(x) for x in self.llm_usage.values()])
 
-    def log_messages(self, messages: Sequence[ChatMessage]):
-        if self.trace is None:
-            self.trace = []
-        self.trace.extend(messages)
+    def log_messages(self, filename: str, funcname: str, messages: Sequence[ChatMessage]):
+        key = f"{filename}.{funcname}"
+        self.trace.setdefault(key, []).extend(messages)
 
-    def dump_trace(self, trace_path: str, append: bool = True):
-        if self.trace is None:
+    def dump_trace(self, filename: str, funcname: str, trace_path: str, append: bool = True):
+        key = f"{filename}.{funcname}"
+        if key not in self.trace:
             logger.warning("No trace logged")
             return
+        trace = self.trace[key]
         with open(trace_path, "a" if append else "w") as f:
-            trace_json = [x.model_dump() for x in self.trace]
+            trace_json = [x.model_dump() for x in trace]
 
             f.write(json.dumps(trace_json) + "\n")
 
@@ -406,8 +410,6 @@ def serialize_json(x: EffectParams | Success | EffectError) -> str:
             }
         elif isinstance(x, Func):
             body = x.full_func
-            # if len(body) > MAX_SERIALIZE_LEN:
-            #     body = body[:MAX_SERIALIZE_LEN] + "..."
             return {
                 "type": "Func",
                 "name": x.name,
@@ -1718,3 +1720,30 @@ def parallelize_effects(effects: List[ToolCall], effect_mapping: Dict[str, Effec
     # add the rest from the one that had an error as sequential
     batches.extend([[x] for x in cannot_parallelize])
     return batches
+
+
+def create_llm(config: LLMConfig) -> "LLM":
+    """
+    Factory function to create the appropriate LLM instance based on model name.
+
+    Args:
+        config: LLM configuration containing model name
+
+    Returns:
+        Configured LLM instance
+
+    Raises:
+        ValueError: If model provider is not supported
+    """
+    model = config.model.lower()
+
+    if model.startswith("openai/"):
+        from nightjarpy.llm.clients.openai import OpenAI
+
+        return OpenAI(config)
+    elif model.startswith("anthropic/"):
+        from nightjarpy.llm.clients.anthropic import Anthropic
+
+        return Anthropic(config)
+    else:
+        raise ValueError(f"Unsupported model provider: {model}. Supported providers: openai/, anthropic/")

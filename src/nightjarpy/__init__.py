@@ -10,7 +10,15 @@ __author__ = "Ellie Cheng"
 __author_email__ = "ellieyhc@csail.mit.edu"
 
 
-from nightjarpy.configs import DEFAULT_CONFIG, Config, LLMConfig
+import nightjarpy.configs as configs
+from nightjarpy.configs import (
+    CompilerConfig,
+    Config,
+    ExecutionStrategy,
+    ExecutionSubstrate,
+    InterpreterConfig,
+    LLMConfig,
+)
 from nightjarpy.decorators import fn
 from nightjarpy.runtime import nj_llm_factory
 from nightjarpy.types import EffectException, LLMUsage
